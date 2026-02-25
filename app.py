@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import random
 import wave
+import os
 import json
 from vosk import Model, KaldiRecognizer
 
@@ -124,6 +125,6 @@ def check_sentence():
     except Exception as e:
         return jsonify({"recognized": sentence, "matches": [], "error": str(e)})
 # ---------------- Run App ----------------
-import os
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
