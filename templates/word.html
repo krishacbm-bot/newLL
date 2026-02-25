@@ -1,0 +1,578 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🤖 Fun Robot Learning Game</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Comic Sans MS', sans-serif;
+  overflow: hidden;
+  position: relative;
+  /* background-color: #000;  */
+}
+
+/* Background image that keeps its ratio */
+#bg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  z-index: -1;
+  transform: translate(-50%, -50%);
+  object-fit: contain; /* prevents stretching */
+}
+.hud{position:fixed;top:12px;left:12px;display:flex;gap:16px;font-weight:bold;z-index:100;}
+.badge{background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:12px;color:#fff;}
+#score{position:fixed;top:12px;right:12px;background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:12px;font-weight:bold;color:#fff;z-index:100;}
+#robotsContainer{position:absolute;left:50px;bottom:50px;width:300px;height:450px;}
+.robot{width:300px;height:450px;opacity:0;transform:scale(0.5) translateY(-100px);transition:all 0.8s cubic-bezier(.68,-0.55,.27,1.55);}
+.robot.show{opacity:1;transform:scale(1) translateY(0);}
+.robot.jump{animation:jumpAnim 0.6s ease;}
+@keyframes jumpAnim{0%{transform:translateY(0) scale(1);}50%{transform:translateY(-30px) scale(1.05);}100%{transform:translateY(0) scale(1);}}
+.robot.wave{animation:waveAnim 0.8s ease;}
+@keyframes waveAnim{0%,100%{transform:rotate(0deg);}25%{transform:rotate(15deg);}50%{transform:rotate(-15deg);}75%{transform:rotate(10deg);}}
+.robot.nod{animation:nodAnim 0.6s ease;}
+@keyframes nodAnim{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+.centerPanel{position:absolute;top:150px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:20px 30px;border-radius:16px;text-align:center;z-index:50;}
+.wordDisplay{font-size:36px;font-weight:800;margin-bottom:8px;color:#fff;text-shadow:1px 1px 2px #000;}
+.phonetic{opacity:0.9;margin-bottom:12px;color:#fff;}
+.controls{display:flex;gap:10px;justify-content:center;margin-top:8px;}
+.btn{padding:10px 18px;border:none;border-radius:12px;cursor:pointer;font-weight:700;}
+.btn.primary{background:linear-gradient(90deg,#ffd166,#06d6a0);color:#101010;}
+.btn.mic{background:transparent;border:2px dashed #fff;color:#fff;}
+#football {
+  position: absolute;
+  width: 250px;             /* adjust size as needed */
+  height: 250px;
+  border-radius: 50%;       /* optional */
+  display: none;            /* keep hidden until needed */
+  z-index: 60;
+  background-image: url('/static/football.gif'); /* football GIF */
+  background-size: cover;
+  background-position: center;
+}
+#goal{position:absolute;width:120px;height:60px;border:3px solid #fff;right:50px;top:50%;transform:translateY(-50%);border-radius:8px;}
+.portal{position:absolute;width:120px;height:120px;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.5);opacity:0;pointer-events:none;}
+.portal.success{background:radial-gradient(circle,#06d6a0 0%,transparent 70%);animation:portalPulse 0.7s ease forwards;}
+.portal.fail{background:radial-gradient(circle,#ff4c4c 0%,transparent 70%);animation:portalPulse 0.7s ease forwards;}
+@keyframes portalPulse{0%{opacity:1;transform:translate(-50%,-50%) scale(0.5);}50%{transform:translate(-50%,-50%) scale(1.2);}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5);}}
+.confetti{position:absolute;width:10px;height:10px;background:gold;opacity:0.9;border-radius:50%;pointer-events:none;}
+.fun-btn {
+  background: #4fc3f7;       /* Soft light blue */
+  color: #fff;               /* White text */
+  
+  font-size: 18px;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.fun-btn:hover {
+  background: #29b6f6;       /* Slightly darker blue on hover */
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+.fun-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+  h1.robot-title {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    
+    padding: 22px 81px;
+    border-radius: 60px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    font-family: "Comic Sans MS", cursive, sans-serif;
+    font-size: 30px;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    letter-spacing: 1px;
+  
+  }
+
+  @keyframes glow {
+    from { box-shadow: 0 0 10px #00f2fe, 0 0 20px #4facfe; }
+    to { box-shadow: 0 0 25px #00f2fe, 0 0 50px #4facfe; }
+  }
+</style>
+</head>
+<body>
+  <img id="bg" src="https://static.vecteezy.com/system/resources/previews/005/585/649/non_2x/abstract-technology-background-hitech-communication-concept-dark-blue-background-vector.jpg" alt="background">
+<h1 class="robot-title">🤖 Robot Learning Game 🤖</h1>
+
+<div class="hud">
+  <div class="badge" id="levelBadge">Level: Easy</div>
+  <div class="badge" id="wordCount">Word: 1/5</div>
+</div>
+<div id="score">Score: 0</div>
+
+<div id="robotsContainer">
+  <div class="robot" id="robot1">
+    <svg width="300" height="450" viewBox="0 0 300 450" xmlns="http://www.w3.org/2000/svg">
+      <g id="r_head"><rect x="90" y="0" width="120" height="100" rx="20" fill="#27b5ff" stroke="#222" stroke-width="3"/><circle cx="125" cy="45" r="18" fill="#d6faff" stroke="#222" stroke-width="3"/><circle cx="175" cy="45" r="18" fill="#d6faff" stroke="#222" stroke-width="3"/><path d="M125,75 Q150,90 175,75" stroke="#222" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+      <g id="r_body"><rect x="100" y="100" width="100" height="120" rx="20" fill="#27b5ff" stroke="#222" stroke-width="3"/></g>
+      <g id="r_arms"><rect x="65" y="115" width="25" height="90" rx="12" fill="#222"/><rect x="210" y="115" width="25" height="90" rx="12" fill="#222"/></g>
+      <g id="r_legs"><rect x="125" y="245" width="20" height="80" rx="10" fill="#222"/><rect x="155" y="245" width="20" height="80" rx="10" fill="#222"/></g>
+      <g id="r_feet"><rect x="115" y="325" width="40" height="25" rx="10" fill="#27b5ff" stroke="#222" stroke-width="3"/><rect x="155" y="325" width="40" height="25" rx="10" fill="#27b5ff" stroke="#222" stroke-width="3"/></g>
+    </svg>
+  </div>
+</div>
+
+<div id="football"></div>
+<div id="goal"></div>
+
+<div class="centerPanel">
+  <div class="wordDisplay" id="wordDisplay">—</div>
+  <div class="phonetic" id="phonetic">Say the word</div>
+  <div class="controls">
+    <button class="btn primary" id="playBtn">🔊 Hear</button>
+    <button class="btn mic" id="listenBtn">🎤 Speak</button><br>
+ <button id="downloadCSVBtn" class="fun-btn">Download Report 📄</button>
+
+  </div>
+  <div id="feedback" style="margin-top:10px"></div>
+</div>
+
+<div class="portal" id="portal"></div>
+
+<div id="postHardBtns" style="display:none; margin-top: 400px;">
+  <button id="playAgainBtn" class="fun-btn">Play Again </button>
+  <button id="nextModuleBtn" class="fun-btn">Next Module </button>
+</div>
+
+
+<script type="module">
+  import { ROBOT_WORDS } from './static/robotWords.js';
+
+  // ✅ Get grade dynamically from localStorage (saved on index.html)
+  let currentGrade = localStorage.getItem("selectedGrade") || "jr_kg";
+
+  // ✅ Load grade-wise words
+  const wordsByLevel = ROBOT_WORDS[currentGrade];
+  if (!wordsByLevel) {
+    alert(`No word list found for grade: ${currentGrade}`);
+    throw new Error("Missing grade data");
+  }
+
+  const LEVELS = [
+    { name: "Easy", words: wordsByLevel.easy },
+    { name: "Medium", words: wordsByLevel.medium },
+    { name: "Hard", words: wordsByLevel.hard }
+  ];
+
+  console.log(`🎓 Loaded words for grade: ${currentGrade}`, LEVELS);
+
+
+  // ✅ The rest of your code stays exactly the same from here ↓
+  let levelIdx = 0, wordIdx = 0, score = 0;
+  const wordDisplay = document.getElementById('wordDisplay');
+  const phonetic = document.getElementById('phonetic');
+  const playBtn = document.getElementById('playBtn');
+  const listenBtn = document.getElementById('listenBtn');
+  const feedback = document.getElementById('feedback');
+  const wordCount = document.getElementById('wordCount');
+  const scoreBadge = document.getElementById('score');
+  const portal = document.getElementById('portal');
+  const football = document.getElementById('football');
+  const robot1 = document.getElementById('robot1');
+  const levelBadge = document.getElementById('levelBadge');
+
+// Easy Level robot parts
+const EASY_PARTS = ['r_head', 'r_body', 'r_arms', 'r_legs', 'r_feet'];
+const PART_NAMES = ['Head', 'Body', 'Arms', 'Legs', 'Feet'];
+EASY_PARTS.forEach(id => document.getElementById(id).style.opacity = 0);
+
+// --- Report tracking ---
+let reportData = [];
+function recordAttempt(word, correct) {
+  reportData.push({
+    word: word,
+    result: correct ? "Correct" : "Incorrect",
+    level: LEVELS[levelIdx].name
+  });
+}
+
+/// 🇮🇳 --- Speech / TTS (Indian English preferred) ---
+function getIndianVoice() {
+  const voices = speechSynthesis.getVoices();
+
+  return (
+    voices.find(v => v.lang === "en-IN") ||
+    voices.find(v => /india|indian/i.test(v.name)) ||
+    voices.find(v => v.lang.startsWith("en-IN")) ||
+    voices.find(v => v.lang === "en-GB") || // neutral fallback
+    voices[0]
+  );
+}
+
+function speakMessage(msg) {
+  if (!window.speechSynthesis) return;
+
+  const u = new SpeechSynthesisUtterance(msg);
+  u.lang = "en-IN";
+  u.voice = getIndianVoice();
+  u.pitch = 1;
+  u.rate = 0.9; // child-friendly
+
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+function playTTS(text) {
+  if (!window.speechSynthesis) return;
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-IN";
+  u.voice = getIndianVoice();
+  u.pitch = 1;
+  u.rate = 0.8; // clearer listening practice
+
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+// --- HUD & Render ---
+function updateHUD() {
+  wordCount.textContent = `Word: ${wordIdx + 1}/${LEVELS[levelIdx].words.length}`;
+  scoreBadge.textContent = `Score: ${score}`;
+}
+
+
+function renderWord() {
+  const w = LEVELS[levelIdx].words[wordIdx];
+  wordDisplay.textContent = w;
+  phonetic.textContent = `Listen then say: ${w}`;
+  feedback.innerHTML = '';
+}
+
+// --- Similarity check ---
+function similarity(a, b) {
+  a = a.toLowerCase().trim();
+  b = b.toLowerCase().trim();
+
+  if (a === b) return 1;
+
+  // Allow 1 letter difference
+  if (Math.abs(a.length - b.length) > 1) return 0;
+
+  let differences = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (a[i] !== b[i]) differences++;
+  }
+
+  return differences <= 1 ? 0.8 : 0;
+}
+
+// --- Portal ---
+function triggerPortal(success) {
+  portal.className = 'portal ' + (success ? 'success' : 'fail');
+  setTimeout(() => { portal.className = 'portal'; }, 800);
+}
+
+// --- Confetti ---
+function spawnConfetti() {
+  for (let i = 0; i < 20; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * window.innerWidth + 'px';
+    c.style.top = '-20px';
+    c.style.background = ['#ff0', '#f0f', '#0ff', '#f55', '#0f0'][Math.floor(Math.random() * 5)];
+    document.body.appendChild(c);
+    c.animate([
+      { transform: 'translateY(0px)' },
+      { transform: `translateY(${window.innerHeight + 20}px) rotate(${Math.random() * 360}deg)` }
+    ], { duration: 1000 + Math.random() * 1000, easing: 'ease-out' }).onfinish = () => c.remove();
+  }
+}
+
+// --- Easy Level robot animation ---
+function robotAction() {
+  const actions = ['jump', 'wave', 'nod'];
+  const action = actions[Math.floor(Math.random() * actions.length)];
+  robot1.classList.add(action);
+  setTimeout(() => robot1.classList.remove(action), 800);
+}
+
+// --- Assemble robot part ---
+function assembleNextPart() {
+  if (wordIdx < EASY_PARTS.length) {
+    const part = document.getElementById(EASY_PARTS[wordIdx]);
+    part.style.opacity = 1;
+    part.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 500, easing: 'ease-out' });
+    speakMessage(`Great! ${PART_NAMES[wordIdx]} attached!`);
+  }
+}
+
+// --- Medium Level: kick football ---
+function kickFootball() {
+  if (!football.style.left) football.style.left = '50px';
+  if (!football.style.top) football.style.top = '300px';
+
+  football.style.display = 'block';
+  football.style.width = '250px';
+  football.style.height = '250px';
+  
+  football.style.borderRadius = '50%';
+  football.style.position = 'absolute';
+  football.style.zIndex = '5';
+
+  const targetX = Math.random() * (window.innerWidth - 60);
+  const targetY = Math.random() * (window.innerHeight - 60);
+
+  football.animate([
+    { transform: `translate(0,0)` },
+    { transform: `translate(${targetX - parseInt(football.style.left)}px, ${targetY - parseInt(football.style.top)}px)` }
+  ], { duration: 800, easing: 'ease-out', fill: 'forwards' });
+
+  const robotX = targetX - 100;
+  const robotY = targetY - 150;
+  robot1.style.transition = 'transform 0.8s ease';
+  robot1.style.transform = `translate(${robotX}px, ${robotY}px) scale(1.05)`;
+
+  setTimeout(() => {
+    football.style.left = `${targetX}px`;
+    football.style.top = `${targetY}px`;
+    robot1.style.transform = `translate(${robotX}px, ${robotY}px) scale(1)`;
+    spawnConfetti();
+
+    if (wordIdx === LEVELS[levelIdx].words.length - 1) {
+      const goal = document.getElementById('goal');
+      goal.style.display = 'block';
+      goal.style.left = `${Math.random() * (window.innerWidth - 120)}px`;
+      goal.style.top = `${Math.random() * (window.innerHeight - 60)}px`;
+      speakMessage("Goal!!! ");
+    }
+  }, 800);
+
+  speakMessage("Great! Robot is kicking the football!");
+}
+// --- Hard Level: catch falling items ---
+function hardLevelAction(word) {
+  // Hide football and goal
+  football.style.display = 'none';
+  const goal = document.getElementById('goal');
+  if (goal) goal.style.display = 'none';
+
+  // Create falling word
+  const item = document.createElement('div');
+  item.className = 'falling-item';
+  item.textContent = word;
+  item.style.position = 'absolute';
+  item.style.top = '-50px';
+  
+  const itemX = Math.random() * (window.innerWidth - 80);
+  item.style.left = itemX + 'px';
+  item.style.padding = '8px 12px';
+  item.style.background = '#0ff';
+  item.style.color = '#000';
+  item.style.fontWeight = 'bold';
+  item.style.borderRadius = '6px';
+  item.style.boxShadow = '0 0 5px #fff';
+  document.body.appendChild(item);
+
+  // Robot fixed vertical position at bottom
+  const robotHeight = robot1.getBoundingClientRect().height;
+  const robotY = window.innerHeight - robotHeight - 20;
+
+  // Move robot horizontally to the falling word
+  robot1.style.transition = 'transform 1.4s ease';
+  robot1.style.transform = `translate(${itemX - 100}px, ${robotY}px) scale(1)`; 
+
+  // Animate word falling
+  const animation = item.animate([
+    { top: '-50px' },
+    { top: `${robotY}px` }
+  ], { duration: 1500, easing: 'linear', fill: 'forwards' });
+
+  animation.onfinish = () => {
+    speakMessage(`Great! Robot caught the ${word}!`);
+    score += 15;
+    updateHUD();
+    spawnConfetti();
+    item.remove();
+  };
+}
+let easyPartIdx = 0; // Tracks which part to assemble in Easy level
+
+function onCorrect() {
+  const currentWord = LEVELS[levelIdx].words[wordIdx];
+  recordAttempt(currentWord, true);
+  feedback.innerHTML = '<span style="color:#0ff;font-weight:800">Correct ✅</span>';
+  score += 10;
+  updateHUD();
+
+  triggerPortal(true);
+
+  // --- Level-specific actions ---
+  if (levelIdx === 0) {
+    // Easy Level: assemble robot part
+    robot1.classList.add('show');
+    robotAction();
+    assembleNextPart();
+  } else if (levelIdx === 1) {
+    // Medium Level: kick football
+    kickFootball();
+  } else if (levelIdx === 2) {
+    // Hard Level: falling word
+    hardLevelAction(currentWord);
+  }
+
+  // Move to next word
+  wordIdx++;
+
+  // --- Check if level complete ---
+  if (wordIdx >= LEVELS[levelIdx].words.length) {
+    if (levelIdx === 0) {
+      speakMessage("Great job! Easy level complete. Medium level starts now!");
+      feedback.innerHTML = '<span style="color:#ff0;font-weight:800"> Easy Level Complete!</span>';
+      setTimeout(() => {
+        levelIdx = 1;
+        wordIdx = 0;
+        levelBadge.textContent = 'Level: Medium';
+        renderWord();
+      }, 2000);
+    } else if (levelIdx === 1) {
+      speakMessage("Great job! Medium level complete. Hard level starts now!");
+      feedback.innerHTML = '<span style="color:#ff0;font-weight:800"> Medium Level Complete!</span>';
+      setTimeout(() => {
+        levelIdx = 2;
+        wordIdx = 0;
+        levelBadge.textContent = 'Level: Hard';
+        renderWord();
+      }, 2000);
+    } else {
+      speakMessage("Amazing! You finished the Hard Level!");
+      feedback.innerHTML = '<span style="color:#ff0;font-weight:800"> All Levels Completed!</span>';
+
+      const postBtns = document.getElementById('postHardBtns');
+      postBtns.style.display = 'flex';
+      postBtns.style.justifyContent = 'center';
+      postBtns.style.gap = '20px';
+    }
+  } else {
+    // --- Show next word immediately ---
+    renderWord();
+  }
+
+  listenBtn.disabled = false;
+}
+
+// --- Incorrect answer ---
+function onIncorrect() {
+  recordAttempt(LEVELS[levelIdx].words[wordIdx], false);
+  feedback.innerHTML = '<span style="color:#f55">Try again!</span>';
+  triggerPortal(false);
+  setTimeout(() => { listenBtn.disabled = false; }, 300);
+}
+
+// --- Speech recognition ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+let recognizer = null;
+if (SpeechRecognition) {
+  recognizer = new SpeechRecognition();
+  recognizer.lang = 'en-US';
+  recognizer.interimResults = false;
+  recognizer.continuous = false;
+  recognizer.maxAlternatives = 1;
+}
+
+// --- Button listeners ---
+playBtn.addEventListener('click', () => playTTS(LEVELS[levelIdx].words[wordIdx]));
+
+listenBtn.addEventListener('click', () => {
+  if (!recognizer) {
+    feedback.innerHTML = '<span style="color:#f55">Speech recognition not supported</span>';
+    return;
+  }
+
+  listenBtn.disabled = true;
+  feedback.innerHTML = '🎙️ Listening...';
+
+  recognizer.onresult = function (ev) {
+    const heard = ev.results[0][0].transcript.trim().toLowerCase();
+    if (similarity(heard, LEVELS[levelIdx].words[wordIdx])) onCorrect();
+    else onIncorrect();
+  };
+
+  recognizer.onend = function () { listenBtn.disabled = false; };
+  recognizer.start();
+});
+
+// --- Introduction ---
+function gameIntro() {
+  const introMsg = "Hello! Welcome to the Fun Robot Learning Game. " +
+    "In Easy Level, assemble the robot by pronouncing words correctly. " +
+    "In Medium Level, help the robot kick the football by saying the words. " +
+    "In Hard Level, help the robot catch falling components. " +
+    "Listen carefully, then speak the word into your microphone. Good luck!";
+  speakMessage(introMsg);
+}
+
+// --- Download CSV report ---
+document.getElementById('downloadCSVBtn').addEventListener('click', () => {
+  if (reportData.length === 0) {
+    alert("No data to download yet!");
+    return;
+  }
+  let csvContent = "Level,Word,Result,Score\n";
+  reportData.forEach(d => { csvContent += `${d.level},${d.word},${d.result},${score}\n`; });
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = "robot_game_report.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('playAgainBtn').addEventListener('click', () => {
+  levelIdx = 0;
+  wordIdx = 0;
+  score = 0;
+  updateHUD();
+  renderWord();
+  feedback.innerHTML = '';
+  const postBtns = document.getElementById('postHardBtns');
+  postBtns.style.display = 'none';
+  speakMessage("Let's play again! Start from Easy Level.");
+});
+
+document.getElementById('nextModuleBtn').addEventListener('click', () => {
+  speakMessage("Great! Moving to the next module.");
+  // Redirect to next module page
+  window.location.href = "sentenceformation.html";
+});
+// Stop speech when leaving the page
+window.addEventListener('beforeunload', () => {
+  speechSynthesis.cancel();
+});
+
+// Optional: stop speech if tab becomes hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    speechSynthesis.cancel();
+  }
+});
+// --- Start game ---
+renderWord();
+updateHUD();
+gameIntro();
+</script>
+
+</body>
+</html>

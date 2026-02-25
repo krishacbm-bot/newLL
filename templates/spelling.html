@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><title>Spelling & Dictation</title></head>
+<body>
+  <h2>Listen to the word and type it:</h2>
+  <audio controls>
+    <source src="/static/word1.mp3" type="audio/mpeg">
+  </audio>
+  <input type="text" id="typed" placeholder="Type the word here">
+  <button onclick="checkSpelling()">✔️ Submit</button>
+  <p id="result"></p>
+
+<script>
+async function checkSpelling() {
+  let typed = document.getElementById("typed").value;
+  let formData = new FormData();
+  formData.append("typed", typed);
+
+  let res = await fetch("/check_spelling", { method: "POST", body: formData });
+  let data = await res.json();
+  document.getElementById("result").innerHTML =
+    "Your Word: " + data.typed +
+    "<br>Correct: " + data.correct +
+    "<br>Score: " + data.score;
+}
+</script>
+</body>
+</html>

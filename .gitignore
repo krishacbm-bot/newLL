@@ -1,0 +1,32 @@
+# Ignore Python virtual environment
+venv/
+*.pyc
+__pycache__/
+*.zip
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Audio and temporary files
+*.wav
+*.zip
+
+# IDE / OS files
+*.DS_Store
+*.vscode/
+*.idea/
+# Ignore Python virtual environment
+venv/
+*.pyc
+__pycache__/
+*.zip
+# Except the folder you want
+!language_lab/
+!language_lab/**
+
+# Optional: ignore system files
+.DS_Store
+Thumbs.db

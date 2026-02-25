@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Language Lab</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; }
+.word-box { margin-bottom: 20px; }
+input, textarea { width: 100%; padding: 8px; margin-top: 8px; }
+button { padding: 10px 20px; margin-top: 10px; }
+.result { margin-top: 20px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>📚 Language Lab</h1>
+
+<div id="words"></div>
+
+<div class="result" id="result"></div>
+
+<script>
+const words = {{ words | tojson }};
+const wordsDiv = document.getElementById('words');
+let currentWordIndex = 0;
+
+function showWord() {
+    if(currentWordIndex >= Object.keys(words).length) {
+        wordsDiv.innerHTML = "<h2>🎉 You finished all words!</h2>";
+        return;
+    }
+    const word = Object.keys(words)[currentWordIndex];
+    const meaning = words[word];
+
+    wordsDiv.innerHTML = `
+        <h2>Word: ${word}</h2>
+        <p>Meaning: ${meaning}</p>
+        <textarea id="sentence" rows="3" placeholder="Write a sentence using '${word}'"></textarea>
+        <button onclick="checkSentence()">Check Sentence</button>
+    `;
+}
+
+async function checkSentence() {
+    const word = Object.keys(words)[currentWordIndex];
+    const sentence = document.getElementById('sentence').value;
+
+    const res = await fetch('/check', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word, sentence})
+    });
+    const data = await res.json();
+
+    let output = "";
+    output += data.word_used ? "✅ Word used correctly\n" : "❌ Word not used\n";
+    output += data.grammar.length > 0 ? "⚠️ Grammar Suggestions:\n" + data.grammar.join("\n") + "\n" : "✅ Grammar looks good\n";
+    output += data.spelling.toLowerCase() !== sentence.toLowerCase() ? `📝 Suggested Spelling Correction: ${data.spelling}\n` : "✅ Spelling looks good\n";
+
+    document.getElementById('result').innerText = output;
+    currentWordIndex++;
+    setTimeout(showWord, 2000);
+}
+
+showWord();
+</script>
+
+</body>
+</html>

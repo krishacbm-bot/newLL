@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>🌈 Word to Sentence Practice</title>
+
+<style>
+/* ---------- BODY ---------- */
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  font-family: "Comic Sans MS", cursive, sans-serif;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #aee2ff, #ffffff);
+  position: relative;
+}
+
+/* ---------- CLOUDS ---------- */
+body::before,
+body::after {
+  content: "☁️ ☁️ ☁️";
+  position: absolute;
+  font-size: 4rem;
+  opacity: 0.4;
+  animation: clouds 25s linear infinite;
+}
+
+body::after {
+  content: "☁️ ☁️ ☁️ ☁️";
+  animation-delay: 12s;
+}
+
+@keyframes clouds {
+  0% { left: -10%; top: 10%; }
+  100% { left: 110%; top: 10%; }
+}
+
+/* ---------- TITLE ---------- */
+h2 {
+  font-size: 2em;
+  color: #ff4081;
+  text-shadow: 2px 2px #fff176;
+  animation: bounceIn 1s ease;
+  text-align: center;
+  margin: 5px 0;
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- WORD BOX ---------- */
+#wordBox {
+  background: linear-gradient(45deg, #ffd54f, #ffca28);
+  border-radius: 30px;
+  padding: 10px 15px;
+  width: 80%;
+  max-width: 500px;
+  color: #2e7d32;
+  font-size: 1.3em;
+  text-align: center;
+  box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
+  margin: 5px 0;
+  border: 4px solid #fff59d;
+}
+
+/* ---------- TOP BAR ---------- */
+.topBar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 3px 0;
+}
+
+.topBar select,
+.topBar button,
+#voiceRate {
+  font-size: 1em;
+  padding: 8px 12px;
+  border-radius: 12px;
+  margin: 3px;
+  border: 3px solid #fff59d;
+  background: #81d4fa;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.topBar button:hover,
+.topBar select:hover {
+  background: #4fc3f7;
+  transform: scale(1.05);
+}
+
+/* ---------- TEXTAREA ---------- */
+textarea {
+  border: 4px dashed #f8bbd0;
+  border-radius: 20px;
+  font-size: 1.2em;
+  padding: 10px;
+  width: 85%;
+  max-width: 600px;
+  height: 10vh;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  resize: none;
+  margin: 5px 0;
+  background: #fff8e1;
+}
+
+/* ---------- OUTPUT AREAS ---------- */
+#original,
+#corrected,
+#message {
+  font-size: 1.1em;
+  width: 85%;
+  max-width: 600px;
+  text-align: center;
+  margin: 3px 0;
+  background: rgba(255,255,255,0.7);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
+
+.correct { color: #2e7d32; font-weight: bold; }
+.error { color: #d32f2f; font-weight: bold; }
+
+/* ---------- FLOATING EMOJIS ---------- */
+#floatingContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.floating {
+  position: absolute;
+  font-size: 30px;
+  animation: floatAnim 6s ease-in-out infinite;
+}
+
+@keyframes floatAnim {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-25px) rotate(10deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+</style>
+</head>
+
+<body>
+
+<div id="floatingContainer"></div>
+
+<h2>🌟 Word to Sentence Adventure 🌟</h2>
+
+<div class="topBar">
+  <label>🎯 Level:</label>
+  <select id="levelSelect">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+</div>
+
+<div id="wordBox">
+  <span>Word:</span> <span id="word">—</span><br>
+  <span>Meaning:</span> <span id="meaning">—</span>
+</div>
+
+<textarea id="inputText" placeholder="Type your fun sentence here... ✏️"></textarea>
+
+<div class="topBar">
+  <button id="correctBtn">✅ Check & Correct</button>
+  <button id="playCorrected" disabled>🔊 Play Sentence</button>
+  <select id="voiceRate">
+    <option value="0.8">🐢 Slow</option>
+    <option value="1" selected>🙂 Normal</option>
+    <option value="1.3">🐇 Fast</option>
+  </select>
+</div>
+
+<div class="bottomBar">
+  <div id="original">
+    <span>🗣 You Said:</span>
+    <div id="origText">—</div>
+  </div>
+
+  <div id="corrected">
+    <span>✅ Corrected:</span>
+    <div id="corrText">—</div>
+  </div>
+
+  <div id="message"></div>
+</div>
+
+<script type="module">
+import { wordsData } from "./static/wordsData.js";   // <-- your external file
+
+// ---------------------- GET GRADE ----------------------
+let currentGrade = localStorage.getItem("selectedGrade") || "jr_kg";
+
+// ---------------------- STATE ----------------------
+let currentLevel = "easy";
+let currentIndex = 0;
+let lastCorrected = "";
+
+// ---------------------- ELEMENTS ----------------------
+const levelSelect = document.getElementById("levelSelect");
+const wordEl = document.getElementById("word");
+const meaningEl = document.getElementById("meaning");
+const inputText = document.getElementById("inputText");
+const correctBtn = document.getElementById("correctBtn");
+const playBtn = document.getElementById("playCorrected");
+const origText = document.getElementById("origText");
+const corrText = document.getElementById("corrText");
+const message = document.getElementById("message");
+const voiceRate = document.getElementById("voiceRate");
+
+// ---------------------- SHOW WORD ----------------------
+function showWord() {
+  const gradeData = wordsData[currentGrade];
+  if (!gradeData) {
+    wordEl.innerText = "—";
+    meaningEl.innerText = "No data";
+    alert("No words found for grade: " + currentGrade);
+    return;
+  }
+
+  const levelWords = gradeData[currentLevel];
+  if (!levelWords || levelWords.length === 0) {
+    wordEl.innerText = "—";
+    meaningEl.innerText = "No words for level";
+    return;
+  }
+
+  const data = levelWords[currentIndex];
+  wordEl.innerText = data.word;
+  meaningEl.innerText = data.meaning;
+
+  inputText.value = "";
+  origText.innerText = "—";
+  corrText.innerText = "—";
+  lastCorrected = "";
+  playBtn.disabled = true;
+}
+
+// ---------------------- CHANGE LEVEL ----------------------
+levelSelect.addEventListener("change", () => {
+  currentLevel = levelSelect.value;
+  currentIndex = 0;
+  showWord();
+});
+
+// Load first word
+showWord();
+
+// ---------------------- GRAMMAR CHECK ----------------------
+async function checkGrammar(text) {
+  const params = new URLSearchParams();
+  params.append("language", "en-US");
+  params.append("text", text);
+
+  const resp = await fetch("https://api.languagetool.org/v2/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+
+  if (!resp.ok) throw new Error("LanguageTool request failed");
+  return resp.json();
+}
+
+function applyReplacements(original, matches) {
+  let corrected = original;
+
+  matches
+    .sort((a, b) => b.offset - a.offset)
+    .forEach((m) => {
+      if (m.replacements && m.replacements.length > 0) {
+        corrected =
+          corrected.slice(0, m.offset) +
+          m.replacements[0].value +
+          corrected.slice(m.offset + m.length);
+      }
+    });
+
+  return corrected;
+}
+
+// ---------------------- CORRECT SENTENCE ----------------------
+correctBtn.onclick = async () => {
+  const txt = inputText.value.trim();
+
+  if (!txt) {
+    message.innerHTML =
+      '<span class="error">Please type a sentence first.</span>';
+    return;
+  }
+
+  origText.innerText = txt;
+  message.innerText = "✨ Checking your sentence...";
+
+  try {
+    const res = await checkGrammar(txt);
+
+    let corrected = applyReplacements(txt, res.matches || []);
+    corrected = corrected.trim();
+    corrected =
+      corrected.charAt(0).toUpperCase() + corrected.slice(1);
+
+    if (!/[.!?]$/.test(corrected)) corrected += ".";
+
+    corrText.innerText = corrected;
+    lastCorrected = corrected;
+    playBtn.disabled = false;
+
+    message.innerHTML = "🎉 Sentence corrected!";
+  } catch (err) {
+    message.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+  }
+};
+
+// ---------------------- SPEAK SENTENCE ----------------------
+playBtn.onclick = () => {
+  if (!lastCorrected) return;
+
+  const u = new SpeechSynthesisUtterance(lastCorrected);
+  u.lang = "en-US";
+  u.rate = parseFloat(voiceRate.value) || 1;
+  speechSynthesis.speak(u);
+};
+
+// ---------------------- LIVE TEXT ----------------------
+inputText.addEventListener("input", () => {
+  origText.innerText = inputText.value || "—";
+});
+</script>
+
+</body>
+</html>

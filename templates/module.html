@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Language Lab - Modules</title>
+<style>
+body {
+  font-family: 'Comic Sans MS', 'Poppins', sans-serif;
+  margin: 0;
+  background: url("static/modulebg.png") no-repeat center center fixed;
+  background-size: cover;
+}
+
+  /* Floating emojis for background animation */
+  .float {
+    position: absolute;
+    font-size: 2rem;
+    opacity: 0.25;
+    animation: floatUp 12s linear infinite;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(100vh) scale(0.8); opacity: 0.2; }
+    50% { opacity: 0.5; }
+    100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+  }
+
+  h1 {
+    text-align: center;
+    color: #fff;
+    font-size: 3rem;
+    margin-top: 40px;
+    text-shadow: 2px 2px 5px rgba(0,0,0,0.15);
+  }
+
+  h2 {
+    text-align: center;
+    color: #bfef09;
+    font-size: 1.3rem;
+    margin-bottom: 40px;
+  }
+
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 25px;
+    padding: 0 20px 100px;
+  }
+
+  .card {
+  width: 200px;
+  height: 160px;
+  background: linear-gradient(135deg, #fff8dc, #fceabb); /* light cream/yellow */
+  color: #2c3e50; /* darker text for contrast */
+  border-radius: 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+  transition: transform 0.3s, box-shadow 0.3s, background 0.5s;
+  cursor: pointer;
+}
+
+.card span {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  transition: transform 0.3s;
+}
+
+.card:hover span {
+  transform: rotate(-10deg) scale(1.3);
+}
+
+.card:hover {
+  transform: translateY(-10px) scale(1.05);
+  background: linear-gradient(135deg, #fceabb, #fff8dc); /* hover gradient */
+  box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+}
+  /* Mascot */
+  #mascot {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    font-size: 4rem;
+    cursor: pointer;
+    animation: bounce 2s infinite ease-in-out;
+    transition: transform 0.3s;
+  }
+
+  #mascot:hover {
+    transform: scale(1.3) rotate(-10deg);
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+
+  /* Speech bubble */
+  .speech {
+    position: fixed;
+    bottom: 120px;
+    right: 110px;
+    background: #fffbea;
+    color: #333;
+    padding: 15px 20px;
+    border-radius: 15px;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    font-size: 1rem;
+    max-width: 220px;
+    text-align: center;
+    border: 2px solid #ffeb3b;
+    animation: fadeIn 1.2s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Floating emojis -->
+<!-- <div class="float" style="left:10%; animation-delay:0s;">🌈</div>
+<div class="float" style="left:30%; animation-delay:2s;">📚</div>
+<div class="float" style="left:50%; animation-delay:4s;">🦜</div>
+<div class="float" style="left:70%; animation-delay:6s;">✨</div>
+<div class="float" style="left:85%; animation-delay:8s;">🎧</div> -->
+
+<h1 id="gradeTitle">Language Lab</h1>
+<h2 id="subtitle">Let’s Explore, Learn, and Have Fun! 🌟</h2>
+
+<div class="container" id="moduleContainer"></div>
+
+<div class="speech" id="speechBox">Hi! I’m Talky Friends Lab! </div>
+<div id="mascot"></div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  let grade = urlParams.get("grade") || localStorage.getItem("selectedGrade") || "1";
+
+  function formatGradeName(g) {
+    if (g === "jr_kg") return "Jr KG";
+    if (g === "sr_kg") return "Sr KG";
+    return "Grade " + g;
+  }
+
+  document.getElementById("gradeTitle").textContent = `Modules for ${formatGradeName(grade)}`;
+
+  const modules = [
+    { name: "Reading Practice", icon: "🧩", link: "pronunciationsentence.html" },
+    { name: "Listening & Writing", icon: "🎧", link: "listening.html" },
+    { name: "Speaking Practice", icon: "📣", link: "word.html" },
+    { name: "Sentence Formation", icon: "✍️", link: "sentenceformation.html" }
+  ];
+
+  const container = document.getElementById("moduleContainer");
+  modules.forEach(mod => {
+    const card = document.createElement("div");
+    card.classList.add("card");
+    card.innerHTML = `<span>${mod.icon}</span>${mod.name}`;
+    card.onclick = () => window.location.href = `${mod.link}?grade=${grade}`;
+    container.appendChild(card);
+  });
+
+  const mascot = document.getElementById("mascot");
+  mascot.addEventListener("click", () => {
+    const msg = new SpeechSynthesisUtterance(
+      `Welcome to ${formatGradeName(grade)} modules! Let's learn and have fun together!`
+    );
+    msg.rate = 1;
+    msg.pitch = 1.2;
+    speechSynthesis.speak(msg);
+
+    document.getElementById("speechBox").textContent = `Great! Let's go, ${formatGradeName(grade)} stars! 🌈`;
+  });
+  // Stop any ongoing speech when leaving the page
+window.addEventListener('beforeunload', () => {
+  speechSynthesis.cancel();
+});
+
+// Stop speech if the tab becomes hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    speechSynthesis.cancel();
+  }
+});
+</script>
+
+</body>
+</html>

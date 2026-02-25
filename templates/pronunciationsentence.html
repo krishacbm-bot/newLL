@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🚂 Pronunciation Railway Adventure — Zigzag Track</title>
+
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family: "Comic Sans MS", "Trebuchet MS", Arial, sans-serif;
+    background: linear-gradient(180deg,#c8f7ff 0%, #fff 60%);
+    color:#2b3a42;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    padding:24px;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    width:100%;
+    max-width:1100px;
+    margin-bottom:18px;
+  }
+  header h1 {
+    color: #114b5f;
+    text-align: center;
+    font-family: 'Comic Sans MS', cursive;
+    background: linear-gradient(to right, #a8edea, #fed6e3);
+    padding: 10px;
+    border-radius: 15px;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+  }
+  .container{
+    width:100%;
+    max-width:1100px;
+    border-radius:20px;
+    box-shadow:0 12px 30px rgba(10,30,40,0.12);
+    padding:18px;
+    position:relative;
+    overflow:visible;
+  }
+  .top-row{
+    display:flex;
+    gap:18px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .left{
+    flex:1.4;
+    min-width:320px;
+  }
+  .right{
+    flex:0.7;
+    min-width:250px;
+  }
+  .station-board{
+    background: linear-gradient(180deg,#fffbe6,#fff3d9);
+    border-radius:16px;
+    border:3px solid #ffdca3;
+    padding:20px;
+    box-shadow: 0 6px 18px rgba(20,40,60,0.06);
+  }
+  #sentence{
+    font-size:1.9rem;
+    color:#d9443e;
+    text-align:center;
+    padding:12px;
+    line-height:1.2;
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    margin-top:12px;
+  }
+  select, button{
+    padding:10px 16px;
+    border-radius:24px;
+    border:2px solid #1f9b9b;
+    font-weight:700;
+    cursor:pointer;
+    background:white;
+    transition:transform .18s ease;
+  }
+  button:hover, select:hover{transform:scale(1.04)}
+  .speak-btn{background:#1fbf59;color:white;border:none}
+  .voice-btn{background:#ffb703;color:#1b1b1b;border:none}
+  .download-btn{background:#00a6ff;color:white;border:none}
+  label{align-self:center;font-weight:700;color:#146c77}
+  .progress-box{
+    background:#ffffff;
+    border-radius:14px;
+    padding:14px;
+    box-shadow:0 4px 10px rgba(10,30,40,0.04);
+  }
+  .progress-box h3{color:#0b6170;margin-bottom:8px}
+  .progress-box p{font-size:15px;margin:6px 0;color:#264653}
+  .track-area{
+    margin-top:18px;
+    position:relative;
+    height:260px;
+    user-select:none;
+  }
+  .track-svg{
+    width:100%;
+    height:100%;
+    overflow:visible;
+  }
+  .station-marker{
+    fill:#fff;
+    stroke:#ff8ba7;
+    stroke-width:3px;
+    filter:drop-shadow(0 6px 6px rgba(0,0,0,0.12));
+  }
+  .station-label{
+    font-size:12px;
+    fill:#1b3a4b;
+    font-weight:700;
+  }
+  .train {
+    position:absolute;
+    width:110px;
+    height:70px;
+    transform-origin:center center;
+    left:0;
+    top:0;
+    z-index:6;
+    pointer-events:none;
+    -webkit-offset-path: path('M0 0');
+    offset-path: path('M0 0');
+    -webkit-offset-rotate: auto;
+    offset-rotate: auto;
+  }
+  .train.wobble{animation:wobble .6s ease-in-out;}
+  @keyframes wobble{
+    0%{transform:translateY(0) rotate(-2deg)}
+    50%{transform:translateY(-3px) rotate(2deg)}
+    100%{transform:translateY(0) rotate(0deg)}
+  }
+  .track-line{
+    stroke:#7ea8a7;
+    stroke-width:8;
+    stroke-linecap:round;
+    fill:none;
+    filter:drop-shadow(0 6px 8px rgba(20,40,60,0.08));
+  }
+  .decor {
+    position:absolute;
+    z-index:2;
+    pointer-events:none;
+  }
+  .cloud-decor{width:120px;opacity:0.8}
+  .tree{
+    position:absolute;
+    bottom:10px;
+    width:60px;
+    z-index:1;
+    opacity:0.95;
+  }
+  @media (max-width:880px){
+    .top-row{flex-direction:column}
+    .right{order:2}
+    .left{order:1}
+    .track-area{height:220px}
+  }
+  /* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+/* Modal box */
+.modal-box {
+  background: linear-gradient(135deg,#ffd1dc,#fff5b7);
+  padding: 28px 36px;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  max-width: 400px;
+  font-family: 'Comic Sans MS', cursive;
+  color: #333;
+  transform: scale(0.8);
+  transition: transform 0.3s;
+}
+
+/* Show modal */
+.modal-overlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
+.modal-box.show {
+  transform: scale(1);
+}
+
+/* Buttons inside modal */
+.modal-box button {
+  margin: 12px 8px 0 8px;
+  padding: 10px 22px;
+  border-radius: 20px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 15px;
+  transition: transform 0.2s;
+}
+.modal-box button:hover { transform: scale(1.1); }
+.btn-next { background: #00c853; color: #fff; }
+.btn-level { background: #ff6d00; color: #fff; }
+
+  footer{margin-top:16px; color:#155e63;padding: 20px 20px;}
+  .back-btn{
+  /* margin: 10px auto 0 auto; */
+  display: block;
+  padding: 8px 18px;
+  border-radius: 22px;
+  border: none;
+  background: #ff6f61;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.back-btn:hover{
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+</style>
+</head>
+<body>
+
+<!-- 1) load your sentences data from the working /static path -->
+<script src="/static/data/sentences.js"></script>
+
+<header>
+  <h1>🚂 Pronunciation Railway — Zigzag Adventure</h1>
+  <h2 id="gradeTitle" style="text-align:center;color:#ff6f61;margin-top:8px;"></h2>
+  <button id="backBtn" class="back-btn">⬅️ Back</button>
+</header>
+
+<div class="container">
+  <div class="top-row">
+    <div class="left">
+      <div class="station-board">
+        <div id="sentence">🚉 Welcome to Pronunciation Station! Click “Start Speaking” to begin!</div>
+<div id="wrongPopup" style="
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 25px 35px;
+  border-radius: 15px;
+  font-size: 22px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  display: none;
+  z-index: 9999;
+  text-align: center;">
+  
+
+  <br><br>
+  <button onclick="closeWrongPopup()" style="
+    padding: 10px 20px;
+    border: none;
+    background: #ff4d4d;
+    color: white;
+    font-size: 18px;
+    border-radius: 10px;">
+    OK
+  </button>
+</div>
+        <div class="controls" style="margin-top:14px;">
+          <label for="level">Level</label>
+          <select id="level" onchange="setLevel()">
+            <option value="easy">Easy </option>
+            <option value="medium">Medium </option>
+            <option value="hard">Hard </option>
+          </select>
+
+          <button class="speak-btn" onclick="startTest()">🎤 Start Speaking</button>
+          <button class="voice-btn" onclick="speakSentence(currentSentence,0.8)">🐢 Slow</button>
+          <button class="voice-btn" onclick="speakSentence(currentSentence,1)">🦜 Normal</button>
+          <button class="voice-btn" onclick="speakSentence(currentSentence,1.3)">⚡ Fast</button>
+          <button class="download-btn" onclick="downloadReport()">📥 Download Report</button>
+          <button id="prevBtn">Previous</button>
+<button id="nextBtn">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="progress-box">
+        <h3>Progress & Score</h3>
+        <p id="spoken"></p>
+        <p id="correction"></p>
+        <p id="result"></p>
+        <p id="progress"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zigzag track + train -->
+  <div class="track-area" id="trackArea">
+    <img class="decor cloud-decor" src="/static/clouds-happy.gif" style="left:12px;top:-18px" />
+    <img class="decor cloud-decor" src="/static/clouds-happy.gif" style="right:12px;top:-10px;width:100px" />
+    <svg class="track-svg" viewBox="0 0 1000 260" preserveAspectRatio="xMidYMid meet" id="trackSVG" xmlns="http://www.w3.org/2000/svg">
+      <path id="zigzagPath" class="track-line" d="M40 220
+           C160 200, 120 120, 260 110
+           C380 100, 340 20, 480 30
+           C600 40, 560 140, 700 130
+           C820 120, 780 30, 920 40" stroke-linecap="round" />
+      <g id="stations">
+        <circle class="station-marker" cx="40" cy="220" r="14"/>
+        <text class="station-label" x="40" y="205" text-anchor="middle">S1</text>
+        <circle class="station-marker" cx="260" cy="110" r="14"/>
+        <text class="station-label" x="260" y="95" text-anchor="middle">S2</text>
+        <circle class="station-marker" cx="480" cy="30" r="14"/>
+        <text class="station-label" x="480" y="15" text-anchor="middle">S3</text>
+        <circle class="station-marker" cx="700" cy="130" r="14"/>
+        <text class="station-label" x="700" y="115" text-anchor="middle">S4</text>
+        <circle class="station-marker" cx="920" cy="40" r="14"/>
+        <text class="station-label" x="920" y="25" text-anchor="middle">S5</text>
+      </g>
+    </svg>
+    <img id="train" class="train" src="/static/train-green-train.gif" alt="train image" />
+    <img class="tree" src="/static/deciduous-tree-nature.gif" style="left:8px" />
+    <img class="tree" src="/static/deciduous-tree-nature.gif" style="right:8px" />
+  </div>
+</div>
+
+<!-- Custom Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox">
+    <h2 id="modalTitle">🎉 Congratulations!</h2>
+    <p id="modalMessage">You completed the level!</p>
+    <div>
+      <button class="btn-level" id="btnNextLevel">Next Level</button>
+      <button class="btn-next" id="btnNextModule">Go to Module</button>
+    </div>
+  </div>
+</div>
+<audio id="trainSound" src="/static/train-whistle.mp3" preload="auto"></audio>
+<footer>🌈 Keep practicing — each correct sentence brings the train closer to the final station! 🚆</footer>
+<script>
+/*
+  Pronunciation Railway — Improved JavaScript (drop-in)
+  - Keeps all UI/IDs exactly the same as your page.
+  - Uses word-level similarity scoring (Levenshtein per word).
+  - Preserves `window.currentSentence` string for compatibility with existing HTML.
+  - Exposes global functions used by your HTML: setLevel(), startTest(), speakSentence(...), downloadReport()
+*/
+
+(function () {
+  // ====== State ======
+  const state = {
+    sentenceLevels: { easy: ["Welcome!"], medium: ["Keep learning!"], hard: ["Great effort!"] },
+    currentGrade: "jr_kg",
+    currentLevel: "easy",
+    currentSentenceIndex: 0,
+    currentStationIndex: 0,
+    stationCount: 5,
+    scoreToPass: 60,
+    report: [],            // array of attempts
+    recognition: null,
+    listening: false,
+    recognitionTimeoutId: null
+  };
+
+  // Expose window.currentSentence string for compatibility with inline speak buttons
+  window.currentSentence = "";
+
+  // ====== Elements (same IDs as your HTML) ======
+  const sentenceEl = document.getElementById("sentence");
+  const spokenEl = document.getElementById("spoken");
+  const correctionEl = document.getElementById("correction");
+  const resultEl = document.getElementById("result");
+  const progressEl = document.getElementById("progress");
+  const trainEl = document.getElementById("train");
+  const zigzagPath = document.getElementById("zigzagPath");
+  const modalOverlay = document.getElementById("modalOverlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalMessage = document.getElementById("modalMessage");
+  const btnNextLevel = document.getElementById("btnNextLevel");
+  const btnNextModule = document.getElementById("btnNextModule");
+  const levelSelect = document.getElementById("level");
+
+  // ====== Utility helpers ======
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function nowISO() { return new Date().toISOString(); }
+  function safeText(t){ return (t || "").toString(); }
+
+  // ====== Sentences / Grade handling ======
+  function applyGradeFromUrlOrStorage() {
+    const urlGrade = new URLSearchParams(window.location.search).get("grade");
+    const savedGrade = localStorage.getItem("selectedGrade");
+    const g = urlGrade || savedGrade || state.currentGrade;
+    state.currentGrade = g;
+    // if an external file provided allSentences, prefer that
+    if (window.allSentences && window.allSentences[state.currentGrade]) {
+      state.sentenceLevels = window.allSentences[state.currentGrade];
+    }
+    const gradeTitle = document.getElementById("gradeTitle");
+    if (gradeTitle) gradeTitle.innerText = "Current Grade: " + state.currentGrade;
+    // store
+    localStorage.setItem("selectedGrade", state.currentGrade);
+  }
+
+  // Called by inline onchange on the level <select>
+  window.setLevel = function () {
+    try {
+      const val = (levelSelect && levelSelect.value) ? levelSelect.value : "easy";
+      state.currentLevel = val;
+    } catch (e) { state.currentLevel = "easy"; }
+    state.currentSentenceIndex = 0;
+    state.currentStationIndex = 0;
+    updateTrainToStation(0, true);
+    nextSentence();
+  };
+
+  function sentencesPool() {
+    return state.sentenceLevels[state.currentLevel] || ["No sentences found"];
+  }
+
+  // updates sentenceEl and window.currentSentence
+  function nextSentence() {
+    const pool = sentencesPool();
+    if (!pool.length) pool.push("No sentences available");
+    window.currentSentence = pool[state.currentSentenceIndex % pool.length] || "";
+    state.currentSentenceIndex = (state.currentSentenceIndex + 1) % pool.length;
+    sentenceEl.innerText = window.currentSentence;
+    // reset UI bits
+    spokenEl.innerText = "";
+    correctionEl.innerText = "";
+    resultEl.innerText = "";
+    progressEl.innerText = `Station: ${state.currentStationIndex + 1}/${state.stationCount}`;
+  }
+
+  // ====== Speech Recognition ======
+  function getRecognition() {
+    if (state.recognition) return state.recognition;
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!R) return null;
+    try {
+      const r = new R();
+      r.lang = "en-IN";
+      r.continuous = false;
+      r.interimResults = false;
+      r.maxAlternatives = 1;
+      r.onresult = onRecognitionResult;
+      r.onerror = (ev) => {
+        console.warn("recognition error", ev);
+        resultEl.innerText = "⚠️ Speech recognition error!";
+        stopRecognition();
+      };
+      r.onend = () => {
+        // recognition ended naturally
+        stopRecognition(false); // do not clear timeout here (already cleared on result)
+      };
+      state.recognition = r;
+      return r;
+    } catch (err) {
+      console.warn("getRecognition error", err);
+      return null;
+    }
+  }
+
+  // Called by inline onclick button
+  window.startTest = function () {
+  if (!window.currentSentence) nextSentence();
+
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    resultEl.innerText = "⚠️ SpeechRecognition not supported on this browser.";
+    console.log("SpeechRecognition not supported.");
+    return;
+  }
+
+const recognition = new Recognition();
+recognition.lang = "en-US";
+recognition.continuous = true;   // allow more time
+recognition.interimResults = false;
+recognition.maxAlternatives = 1;
+
+  console.log("🎤 Recognition initialized, starting...");
+  resultEl.innerText = "🎧 Listening... (please speak clearly)";
+
+  let didRecognize = false;
+
+  recognition.onresult = (event) => {
+    didRecognize = true;
+    const transcript = event.results[0][0].transcript.trim();
+    console.log("✅ Heard:", transcript);
+    stopRecognition();
+    onRecognitionResult(event);
+  };
+
+  recognition.onerror = (event) => {
+    console.log("⚠️ Recognition error:", event.error);
+    resultEl.innerText = "⚠️ " + event.error;
+    stopRecognition();
+  };
+
+  recognition.onend = () => {
+    if (!didRecognize) {
+      console.log("⏹ Recognition ended without result");
+      resultEl.innerText = "😕 Didn't catch that — please try again.";
+    }
+    stopRecognition();
+  };
+
+  try {
+    recognition.start();
+    console.log("🎙 Recognition started successfully.");
+  } catch (err) {
+    console.error("Recognition start failed:", err);
+    resultEl.innerText = "⚠️ Couldn't start microphone. Check permissions.";
+  }
+};
+
+  function stopRecognition(clearTimeoutFlag = true) {
+    if (state.recognition && state.listening) {
+      try { state.recognition.stop(); } catch (e) { /*ignore*/ }
+    }
+    state.listening = false;
+    if (clearTimeoutFlag && state.recognitionTimeoutId) {
+      clearTimeout(state.recognitionTimeoutId);
+      state.recognitionTimeoutId = null;
+    }
+  }
+
+  let recognitionDone = false; // global flag
+// Handler for recognition result
+function onRecognitionResult(ev) {
+    stopRecognition(true);
+    const heard = (ev.results?.[0]?.[0]?.transcript || "").trim();
+    spokenEl.innerText = "🗣 You said: " + (heard || "—");
+
+    const expected = window.currentSentence || "";
+
+    const normalize = str => str.toLowerCase().replace(/[.,!?;:()"]/g, "").trim();
+    const heardNorm = normalize(heard);
+    const expectedNorm = normalize(expected);
+
+const score = similarityScore(heardNorm, expectedNorm);
+const passed = score >= state.scoreToPass; // 70 by default.
+
+state.report.push({ 
+    time: nowISO(), 
+    sentence: expected, 
+    heard, 
+    score: Math.round(score),
+    passed
+});
+   if (passed) {
+    resultEl.innerText = `✅ Good job! Score: ${Math.round(score)}%`;
+    progressEl.innerText = `✅ Station: ${state.currentStationIndex + 1}/${state.stationCount}`;
+
+    correctionEl.innerHTML = "";
+    moveTrainForward();
+} else {
+    resultEl.innerText = `(Score: ${Math.round(score)}%)`;
+    correctionEl.innerHTML = `🚉 Correct sentence: <b>${expected}</b>`;
+}
+}
+
+  // ====== Text-To-Speech (keeps your existing call style) ======
+  window.speakSentence = function (textOrRef, rate = 1) {
+    // Some HTML uses speakSentence(currentSentence,0.8) — allow both string or reference
+    const text = (typeof textOrRef === "string") ? textOrRef : (window.currentSentence || "");
+    if (!text) return;
+    try {
+      if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-IN";
+      u.rate = rate;
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      console.warn("TTS error", e);
+    }
+  };
+
+  // ====== Similarity scoring (word-level + Levenshtein) ======
+  function similarityScore(a, b) {
+    a = safeText(a).toLowerCase().trim();
+    b = safeText(b).toLowerCase().trim();
+    if (!a.length || !b.length) return 0;
+
+    // Quick exact match (ignoring punctuation)
+    const ap = a.replace(/[.,!?;:()"]/g, "");
+    const bp = b.replace(/[.,!?;:()"]/g, "");
+    if (ap === bp) return 100;
+
+    const wa = ap.split(/\s+/).filter(Boolean);
+    const wb = bp.split(/\s+/).filter(Boolean);
+    const maxWords = Math.max(wa.length, wb.length);
+    if (maxWords === 0) return 0;
+
+    let totalScore = 0;
+    for (let i = 0; i < maxWords; i++) {
+      const A = wa[i] || "";
+      const B = wb[i] || "";
+      const denom = Math.max(1, Math.max(A.length, B.length));
+      const lev = levenshtein(A, B);
+      const wordScore = Math.max(0, 1 - (lev / denom)); // 1..0
+      totalScore += wordScore;
+    }
+    const wordLevelPercent = (totalScore / maxWords) * 100;
+    return clamp(wordLevelPercent, 0, 100);
+  }
+
+  // Standard dynamic programming Levenshtein
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    const al = a.length, bl = b.length;
+    if (al === 0) return bl;
+    if (bl === 0) return al;
+    const dp = Array.from({ length: al + 1 }, () => new Array(bl + 1).fill(0));
+    for (let i = 0; i <= al; i++) dp[i][0] = i;
+    for (let j = 0; j <= bl; j++) dp[0][j] = j;
+    for (let i = 1; i <= al; i++) {
+      for (let j = 1; j <= bl; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+      }
+    }
+    return dp[al][bl];
+
+  }
+
+  // ====== Train movement (SVG path) ======
+  function computeStationOffsets(count) {
+    // defensive: if SVG path API not available, emulate evenly
+    try {
+      const total = zigzagPath.getTotalLength();
+      const offsets = [];
+      for (let i = 0; i < count; i++) {
+        const fraction = (count === 1) ? 0 : i / (count - 1);
+        const pos = zigzagPath.getPointAtLength(total * fraction);
+        offsets.push({ fraction, x: pos.x, y: pos.y });
+      }
+      return { total, offsets };
+    } catch (e) {
+      // fallback linear offsets
+      const offsets = [];
+      for (let i = 0; i < count; i++) offsets.push({ fraction: (count === 1) ? 0 : i / (count - 1), x: 0, y: 0 });
+      return { total: 1, offsets };
+    }
+  }
+
+  function buildCSSPath(samples = 200) {
+    try {
+      const total = zigzagPath.getTotalLength();
+      const pts = [];
+      for (let i = 0; i <= samples; i++) {
+        const p = zigzagPath.getPointAtLength((i / samples) * total);
+        pts.push(`${p.x} ${p.y}`);
+      }
+      return `M ${pts.join(" L ")}`;
+    } catch (e) {
+      // minimal fallback path
+      return "M 0 0 L 100 0";
+    }
+  }
+
+function updateTrainToStation(stationIndex, instant = false) {
+    stationIndex = clamp(stationIndex, 0, state.stationCount - 1);
+
+    // play train sound only if not instant jump
+    if (!instant) {
+        const trainSound = document.getElementById("trainSound");
+        if (trainSound) {
+            trainSound.currentTime = 0; // rewind to start
+            trainSound.play().catch(e => console.warn("Audio play failed", e));
+        }
+    }
+
+    // existing CSS offset-path code...
+    try {
+      const cssPath = buildCSSPath();
+      trainEl.style.offsetPath = `path('${cssPath}')`;
+      trainEl.style.webkitOffsetPath = `path('${cssPath}')`;
+    } catch (e) { /* ignore */ }
+
+    const info = computeStationOffsets(state.stationCount);
+    const targetFraction = info.offsets[stationIndex].fraction;
+    const percent = (targetFraction * 100).toFixed(3) + "%";
+
+    if (instant) {
+      trainEl.style.transition = "none";
+      trainEl.style.offsetDistance = percent;
+      trainEl.style.webkitOffsetDistance = percent;
+      orientTrain(targetFraction);
+    } else {
+      trainEl.style.transition = "offset-distance 900ms ease-in-out, -webkit-offset-distance 900ms ease-in-out";
+      trainEl.classList.add("wobble");
+      setTimeout(() => {
+        trainEl.style.offsetDistance = percent;
+        trainEl.style.webkitOffsetDistance = percent;
+        setTimeout(() => trainEl.classList.remove("wobble"), 980);
+        orientTrain(targetFraction);
+      }, 10);
+    }
+    progressEl.innerText = `Station: ${stationIndex + 1}/${state.stationCount}`;
+  }
+
+  function orientTrain(fraction) {
+    try {
+      const total = zigzagPath.getTotalLength();
+      const epsilon = Math.max(1, total * 0.0005);
+      const pos = zigzagPath.getPointAtLength(total * fraction);
+      const posAhead = zigzagPath.getPointAtLength(Math.min(total, total * fraction + epsilon));
+      const angle = Math.atan2(posAhead.y - pos.y, posAhead.x - pos.x) * 180 / Math.PI;
+      trainEl.style.transform = `rotate(${angle}deg)`;
+    } catch (e) {
+      // ignore orientation errors (rare)
+    }
+  }
+
+  // Move forward on success
+  function moveTrainForward() {
+    state.currentStationIndex++;
+    if (state.currentStationIndex < state.stationCount) {
+      updateTrainToStation(state.currentStationIndex);
+      nextSentence();
+    } else {
+      celebrateLevelComplete();
+    }
+  }
+
+  // ====== Level completion modal ======
+  function celebrateLevelComplete() {
+    trainEl.classList.add("wobble");
+    setTimeout(() => trainEl.classList.remove("wobble"), 1200);
+
+    // reset indices for next time (visual reset only)
+    state.currentStationIndex = 0;
+    state.currentSentenceIndex = 0;
+    updateTrainToStation(0, true);
+
+    // show modal
+    modalTitle.innerText = `${state.currentLevel.toUpperCase()} Level Complete!`;
+    modalMessage.innerText = "Choose your next action:";
+    modalOverlay.classList.add("show");
+
+    // wire modal buttons (one-time attach safe)
+    btnNextLevel.onclick = () => {
+      modalOverlay.classList.remove("show");
+      const levels = ["easy", "medium", "hard"];
+      const nextIndex = (levels.indexOf(state.currentLevel) + 1) % levels.length;
+      state.currentLevel = levels[nextIndex];
+      levelSelect.value = state.currentLevel;
+      // reset and start new level
+      state.currentSentenceIndex = 0;
+      state.currentStationIndex = 0;
+      updateTrainToStation(0, true);
+      nextSentence();
+    };
+    btnNextModule.onclick = () => {
+      modalOverlay.classList.remove("show");
+      // default navigation - replace as needed
+      window.location.href = "listening.html";
+    };
+  }
+
+// ====== Export / Download report (CSV) ======
+window.downloadReport = function () {
+    if (!state.report.length) {
+        alert("No attempts yet to download.");
+        return;
+    }
+
+    // CSV header
+    const headers = ["Time", "Sentence", "Spoken", "Score", "Passed"];
+    const csvRows = [headers.join(",")];
+
+    // CSV body
+    state.report.forEach(r => {
+        const row = [
+            r.time,
+            `"${r.sentence.replace(/"/g, '""')}"`, // escape quotes properly
+            `"${r.heard.replace(/"/g, '""')}"`,
+            r.score.toFixed(1),     // partial score with one decimal
+            r.passed ? "TRUE" : "FALSE"
+        ];
+        csvRows.push(row.join(","));
+    });
+
+    // create blob and download
+    const csvContent = csvRows.join("\r\n"); // \r\n for better Excel compatibility
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pronunciation_report.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+};
+
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+
+if (prevBtn) {
+  prevBtn.addEventListener("click", () => {
+    // go to previous sentence
+    state.currentSentenceIndex--;
+    if (state.currentSentenceIndex < 0) {
+      const pool = sentencesPool();
+      state.currentSentenceIndex = pool.length - 1; // wrap around
+    }
+    // update UI
+    nextSentence();
+    updateTrainToStation(state.currentStationIndex, true); // keep train in place
+    resultEl.innerText = "";
+    correctionEl.innerText = "";
+  });
+}
+
+if (nextBtn) {
+  nextBtn.addEventListener("click", () => {
+    // move to next sentence manually
+    nextSentence();
+    updateTrainToStation(state.currentStationIndex, true); // keep train in place
+    resultEl.innerText = "";
+    correctionEl.innerText = "";
+  });
+};
+
+  // ====== Initialization & hookup ======
+  function init() {
+    // If external allSentences provided (your /static data), use it
+    if (window.allSentences && window.allSentences[state.currentGrade]) {
+      state.sentenceLevels = window.allSentences[state.currentGrade];
+    }
+
+    applyGradeFromUrlOrStorage();
+
+    // read stations count if present (some pages might change this)
+    try {
+      const found = (typeof stationCount !== "undefined") ? stationCount : undefined;
+      if (typeof found === "number") state.stationCount = clamp(found, 2, 10);
+    } catch (e) { /* ignore */ }
+
+    // show first sentence and place train
+    nextSentence();
+    // a small delay to allow SVG to be ready
+    setTimeout(() => updateTrainToStation(0, true), 200);
+
+    // handle page resize -> reposition train instantly
+    window.addEventListener("resize", () => updateTrainToStation(state.currentStationIndex, true));
+  }
+
+  // Start it up
+  init();
+const backBtn = document.getElementById("backBtn");
+
+if (backBtn) {
+  backBtn.addEventListener("click", () => {
+    // If there is history, go back
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      // Fallback (safe home page)
+      window.location.href = "module.html";
+    }
+  });
+}
+  // expose a couple internal things for debugging if needed (optional)
+  window._pronunciationRailway = {
+    state,
+    nextSentence,
+    updateTrainToStation,
+    similarityScore
+  };
+
+})();
+
+
+</script>

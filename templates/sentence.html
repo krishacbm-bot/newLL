@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pronunciation Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
+    #sentence { font-size: 20px; margin: 20px; font-weight: bold; }
+    #spoken, #correction, #result { font-size: 18px; margin-top: 15px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 8px; }
+    select { padding: 8px; font-size: 16px; margin: 10px; }
+    .wrong { color: red; font-weight: bold; }
+    .correct { color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h2>🎤 Pronunciation Test</h2>
+
+  <!-- Difficulty selection -->
+  <label for="level">Choose Difficulty:</label>
+  <select id="level" onchange="setLevel()">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+  
+  <p id="sentence">Click "Start Speaking" to begin</p>
+  
+  <button onclick="startTest()">Start Speaking</button>
+  <button onclick="downloadReport()">📥 Download Report</button>
+
+  <!-- Voice speed controls -->
+  <div>
+    <button onclick="speakSentence(currentSentence,0.7)">🔉 Slow</button>
+    <button onclick="speakSentence(currentSentence,1)">🔉 Normal</button>
+    <button onclick="speakSentence(currentSentence,1.3)">🔉 Fast</button>
+  </div>
+  
+  <p id="spoken"></p>
+  <p id="correction"></p>
+  <p id="result"></p>
+  <p id="progress"></p>
+
+  <script>
+    // Sentences by difficulty
+    const sentenceLevels = {
+      easy: [
+        "The cat is sleeping",
+        "I like apples",
+        "She is my friend"
+      ],
+      medium: [
+        "The sun rises in the east",
+        "Reading books makes you smarter",
+        "Practice makes perfect"
+      ],
+      hard: [
+        "She sells seashells by the seashore",
+        "How much wood would a woodchuck chuck",
+        "Peter Piper picked a peck of pickled peppers"
+      ]
+    };
+
+    let currentSentence = "";
+    let currentLevel = "easy";
+    let usedSentences = [];
+    let report = [];
+
+    function setLevel() {
+      currentLevel = document.getElementById("level").value;
+      usedSentences = []; // reset progress
+      nextSentence();
+    }
+
+    // Pick next sentence (no repeats until all used)
+    function nextSentence() {
+      const pool = sentenceLevels[currentLevel];
+      if (usedSentences.length === pool.length) {
+        usedSentences = []; // reset after finishing all
+      }
+      let available = pool.filter(s => !usedSentences.includes(s));
+      let randomIndex = Math.floor(Math.random() * available.length);
+      currentSentence = available[randomIndex];
+      usedSentences.push(currentSentence);
+
+      document.getElementById("sentence").innerText = currentSentence;
+      document.getElementById("spoken").innerText = "";
+      document.getElementById("correction").innerText = "";
+      document.getElementById("result").innerText = "";
+      document.getElementById("progress").innerText = 
+        `Progress: ${usedSentences.length}/${pool.length} sentences done`;
+    }
+
+    // Simple similarity check
+    function similarity(s1, s2) {
+      s1 = s1.toLowerCase().trim();
+      s2 = s2.toLowerCase().trim();
+      let longer = s1.length > s2.length ? s1 : s2;
+      let shorter = s1.length > s2.length ? s2 : s1;
+      let match = 0;
+      for (let i = 0; i < shorter.length; i++) {
+        if (s1[i] === s2[i]) match++;
+      }
+      return (match / longer.length) * 100;
+    }
+
+    // Speak correct sentence (TTS)
+    function speakSentence(text, speed=1) {
+      if (!text) return;
+      let utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      utterance.rate = speed;  
+      speechSynthesis.speak(utterance);
+    }
+
+    // Start speech recognition
+    function startTest() {
+      if (!currentSentence) {
+        nextSentence();
+      }
+
+      let recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "en-US";
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        let spoken = event.results[0][0].transcript;
+        document.getElementById("spoken").innerText = "You said: " + spoken;
+
+        let score = similarity(currentSentence, spoken).toFixed(2);
+        let result = score >= 70 ? "✅ Pass" : "❌ Fail";
+
+        document.getElementById("result").innerText = `Score: ${score}% → ${result}`;
+
+        // Save report entry
+        report.push({sentence: currentSentence, spoken: spoken, score: score, result: result});
+
+        // Show correction if wrong
+        if (score < 100) {
+          document.getElementById("correction").innerHTML = 
+            `Correct sentence: <span class="correct">${currentSentence}</span>`;
+          // Speak the correct sentence aloud
+          speakSentence(currentSentence);
+        } else {
+          document.getElementById("correction").innerText = "Perfect! 🎉";
+        }
+
+        // Automatically go to next sentence after 3 sec
+        setTimeout(nextSentence, 3000);
+      };
+
+      recognition.onerror = function() {
+        document.getElementById("result").innerText = "⚠ Speech recognition error!";
+      };
+    }
+
+    // Download student report
+    function downloadReport() {
+      if (report.length === 0) {
+        alert("No data to download yet!");
+        return;
+      }
+      let csv = "Sentence,Spoken,Score,Result\n";
+      report.forEach(r => {
+        csv += `"${r.sentence}","${r.spoken}",${r.score},${r.result}\n`;
+      });
+
+      let blob = new Blob([csv], { type: "text/csv" });
+      let link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "pronunciation_report.csv";
+      link.click();
+    }
+
+    // Initialize with first sentence
+    setLevel();
+  </script>
+
+</body>
+</html>

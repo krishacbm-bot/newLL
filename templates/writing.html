@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><title>Creative Writing</title></head>
+<body>
+  <h2>Story Starter:</h2>
+  <p><b>Once upon a time, there was a little bird...</b></p>
+  <textarea id="story" rows="6" cols="50" placeholder="Continue the story here..."></textarea><br>
+  <button onclick="checkWriting()">✔️ Submit</button>
+  <p id="result"></p>
+
+<script>
+async function checkWriting() {
+  let text = document.getElementById("story").value;
+  let formData = new FormData();
+  formData.append("text", text);
+
+  let res = await fetch("/check_writing", { method: "POST", body: formData });
+  let data = await res.json();
+  document.getElementById("result").innerHTML =
+    "Your Writing: " + data.text +
+    "<br>Grammar Issues: " + data.grammar_issues.join(", ") +
+    "<br>Score: " + data.score;
+}
+</script>
+</body>
+</html>

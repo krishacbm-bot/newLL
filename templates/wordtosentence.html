@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bakery Builder — SVG Bakery (Enhanced)</title>
+<style>
+  :root{
+    --bg1:#fff0f6; --bg2:#fff8ee; --card:#ffffff;
+    --accent:#ff6b9a; --accent2:#ffb86b; --muted:#6b6b6b;
+  }
+  *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial}
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#fff6f0 0%, #fff 60%);color:#333}
+  main{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:380px 1fr;gap:18px;padding:12px}
+  .card{background:var(--card);border-radius:12px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,0.06)}
+  header{display:flex;align-items:center;gap:12px;margin:0 12px 6px}
+  .bun{width:56px;height:56px;border-radius:50%;background:linear-gradient(180deg,#ffd9d9,#ffb3c1);display:flex;align-items:center;justify-content:center;font-weight:800;color:#7a2b3a}
+  h1{font-size:18px;margin:0}
+  .controls{margin-left:auto;display:flex;gap:8px}
+  .btn{background:var(--accent);border:none;color:white;padding:8px 10px;border-radius:10px;font-weight:700;cursor:pointer}
+  .btn.secondary{background:var(--accent2);color:#5a2b00}
+
+  /* Bakery area */
+  .bake-area{display:flex;flex-direction:column;align-items:center;gap:12px;min-height:520px;position:relative;overflow:visible}
+  .svg-wrap{width:100%;max-width:560px;height:380px}
+  .ingredients-row{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:6px}
+  .ing-btn{cursor:pointer;user-select:none;padding:6px 8px;border-radius:8px;background:#fff;border:1px solid #ffe6ee;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,0.06)}
+  .scrambled{display:flex;flex-wrap:wrap;gap:8px}
+  .word{padding:8px 12px;border-radius:8px;background:#fff;border:2px solid #f0f0f0;cursor:pointer;font-weight:700;user-select:none}
+  .dropzone{min-height:54px;border-radius:8px;border:2px dashed #eee;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:transparent}
+  .controls-row{display:flex;gap:8px;margin-top:12px}
+
+  /* cake layers */
+  .cake-layer { fill: #ffd1e0; stroke: rgba(255,122,162,.12); stroke-width:0; opacity:0; transform-origin: center bottom; transition: transform .5s cubic-bezier(.2,.8,.2,1), opacity .45s; }
+  .cake-layer.show { opacity:1; transform: translateY(0) scale(1); filter: drop-shadow(0 8px 20px rgba(255,122,162,0.08)); }
+
+  /* bowl mixing animation (applied via class) */
+  .mix-shake { animation: mixShake .9s ease-in-out; }
+  @keyframes mixShake {
+    0%{ transform: translateY(0) rotate(0) }
+    25%{ transform: translateY(-6px) rotate(-2deg) }
+    50%{ transform: translateY(0) rotate(1.5deg) }
+    75%{ transform: translateY(-4px) rotate(-1deg) }
+    100%{ transform: translateY(0) rotate(0) }
+  }
+
+  /* confetti canvas */
+  #confettiCanvas{position:fixed;left:0;top:0;pointer-events:none;mix-blend-mode:screen;z-index:9999}
+
+  @media(max-width:900px){main{grid-template-columns:1fr;padding:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bun">BB</div>
+  <div>
+    <h1>Bakery Builder — SVG Bakery</h1>
+    <div style="font-size:12px;color:var(--muted)">Form sentences → add ingredients → bake a cake!</div>
+  </div>
+  <div class="controls">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div>Level: <strong id="levelLabel">Easy</strong></div>
+      <div style="margin-left:8px">Score: <strong id="score">0</strong>/5</div>
+    </div>
+    <button class="btn" id="restartBtn">Restart</button>
+    <button class="btn secondary" id="helpBtn">How to play</button>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div style="font-weight:800;margin-bottom:8px">Bake Progress</div>
+    <div class="level-select" style="display:flex;gap:8px;margin-bottom:12px">
+      <div class="ing-btn level active" data-level="0">Easy</div>
+      <div class="ing-btn level" data-level="1">Medium</div>
+      <div class="ing-btn level" data-level="2">Hard</div>
+    </div>
+
+    <div class="bake-area">
+      <!-- SVG bakery scene -->
+      <div class="svg-wrap card" style="padding:12px">
+        <svg id="bakerySVG" viewBox="0 0 900 520" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+          <!-- background table -->
+          <rect x="0" y="350" width="900" height="170" fill="#fff3f6"/>
+          <!-- Oven (right) -->
+          <g id="ovenGroup" transform="translate(560,120)">
+            <rect x="0" y="0" width="300" height="260" rx="18" fill="#5b2a2a"/>
+            <rect x="20" y="28" width="260" height="140" rx="10" fill="#3b1a1a"/>
+            <g id="ovenDoor" transform="translate(40,180)">
+              <rect x="0" y="0" width="220" height="64" rx="8" fill="#fff7ef" stroke="#e9d6c9" stroke-width="2"/>
+              <text x="110" y="40" text-anchor="middle" font-size="20" fill="#6b2b2b" font-weight="700">Oven</text>
+            </g>
+            <!-- oven glow -->
+            <ellipse id="ovenGlow" cx="150" cy="170" rx="130" ry="30" fill="rgba(255,186,107,0.0)"/>
+          </g>
+
+          <!-- Bowl & mixing area (center-left) -->
+          <g id="bowlGroup" transform="translate(160,220)">
+            <g id="bowl" transform="translate(0,0)">
+              <ellipse cx="0" cy="80" rx="110" ry="40" fill="#fff9fb" stroke="#ffdfe8" stroke-width="4"/>
+              <path d="M-110,70 C-100,10 100,10 110,70 L110,84 C100,40 -100,40 -110,84 Z" fill="#fff3f6" stroke="#ffdfe8" stroke-width="3"/>
+            </g>
+            <!-- mixing spoon -->
+            <g id="spoon" transform="translate(40,10)" style="opacity:0.9">
+              <rect x="-8" y="-8" width="12" height="120" rx="6" fill="#b67b5a"/>
+              <ellipse cx="-2" cy="116" rx="20" ry="12" fill="#d79f86"/>
+            </g>
+          </g>
+
+          <!-- Ingredients icons (left area) -->
+          <g id="ingredientsGroup" transform="translate(80,40)">
+            <!-- Flour -->
+            <g class="ing" id="ing_flour" transform="translate(0,0)" data-title="Flour">
+              <rect x="-28" y="-8" width="56" height="56" rx="10" fill="#fff" stroke="#ffdfe8"/>
+              <text x="0" y="30" text-anchor="middle" font-size="14" fill="#6b2b2b" font-weight="800">Flour</text>
+            </g>
+            <!-- Sugar -->
+            <g class="ing" id="ing_sugar" transform="translate(0,90)" data-title="Sugar">
+              <rect x="-28" y="-8" width="56" height="56" rx="10" fill="#fff" stroke="#ffdfe8"/>
+              <text x="0" y="30" text-anchor="middle" font-size="14" fill="#6b2b2b" font-weight="800">Sugar</text>
+            </g>
+            <!-- Eggs -->
+            <g class="ing" id="ing_eggs" transform="translate(0,180)" data-title="Eggs">
+              <rect x="-28" y="-8" width="56" height="56" rx="10" fill="#fff" stroke="#ffdfe8"/>
+              <text x="0" y="30" text-anchor="middle" font-size="14" fill="#6b2b2b" font-weight="800">Eggs</text>
+            </g>
+            <!-- Milk -->
+            <g class="ing" id="ing_milk" transform="translate(130,0)" data-title="Milk">
+              <rect x="-28" y="-8" width="56" height="56" rx="10" fill="#fff" stroke="#ffdfe8"/>
+              <text x="0" y="30" text-anchor="middle" font-size="14" fill="#6b2b2b" font-weight="800">Milk</text>
+            </g>
+            <!-- Icing -->
+            <g class="ing" id="ing_icing" transform="translate(130,90)" data-title="Icing">
+              <rect x="-28" y="-8" width="56" height="56" rx="10" fill="#fff" stroke="#ffdfe8"/>
+              <text x="0" y="30" text-anchor="middle" font-size="14" fill="#6b2b2b" font-weight="800">Icing</text>
+            </g>
+          </g>
+
+          <!-- Cake (initially hidden in oven) -->
+          <g id="cakeGroup" transform="translate(640,210)" style="opacity:0">
+            <g id="cakeBody" transform="translate(0,0)">
+              <ellipse cx="0" cy="64" rx="70" ry="26" fill="#fff0f4"/>
+              <rect x="-70" y="12" width="140" height="40" rx="18" fill="#ffd1e0"/>
+              <g id="cakeLayers" transform="translate(-56,12)">
+                <rect class="cake-layer" id="c1" x="0" y="28" width="112" height="18" rx="8"/>
+                <rect class="cake-layer" id="c2" x="0" y="8" width="112" height="18" rx="8"/>
+                <rect class="cake-layer" id="c3" x="0" y="-12" width="112" height="18" rx="8"/>
+                <rect class="cake-layer" id="c4" x="0" y="-32" width="112" height="18" rx="8"/>
+                <rect class="cake-layer" id="c5" x="0" y="-52" width="112" height="18" rx="8"/>
+              </g>
+            </g>
+          </g>
+
+          <!-- small decorative text -->
+          <text x="30" y="330" font-size="12" fill="#6b6b6b">Tap words to form sentences. Correct answers add ingredients to the bowl → bake!</text>
+        </svg>
+      </div>
+
+      <!-- Ingredients row for accessibility (also clickable) -->
+      <div class="ingredients-row" id="ingredientsRow">
+        <div class="ing-btn" data-id="ing_flour">Flour</div>
+        <div class="ing-btn" data-id="ing_sugar">Sugar</div>
+        <div class="ing-btn" data-id="ing_eggs">Eggs</div>
+        <div class="ing-btn" data-id="ing_milk">Milk</div>
+        <div class="ing-btn" data-id="ing_icing">Icing</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right panel: prompt and controls -->
+  <section class="card">
+    <div style="font-weight:800;margin-bottom:8px">Arrange the words to form a correct sentence</div>
+
+    <div id="scrambled" class="scrambled" aria-label="Word choices"></div>
+    <div id="dropzone" class="dropzone" aria-label="Build sentence area"></div>
+
+    <div class="controls-row">
+      <button class="btn" id="checkBtn">Check</button>
+      <button class="btn secondary" id="clearBtn">Clear</button>
+      <button class="btn secondary" id="hintBtn">Hint (-1)</button>
+    </div>
+
+    <div style="margin-top:14px;color:var(--muted);font-size:13px">
+      <strong>Tips:</strong> Tap a word to move it into the bowl area (drop zone). Tap inside the box to remove the last word.
+    </div>
+  </section>
+</main>
+
+<!-- Confetti -->
+<canvas id="confettiCanvas"></canvas>
+
+<script>
+/* -------------------------
+   Data and state
+   ------------------------- */
+const LEVELS = [
+  { name: 'Easy', sentences: ['I like cake','The cat sleeps','She eats an apple','We play','He reads a book'] },
+  { name: 'Medium', sentences: ['The little boy loves chocolate','My mother bakes a chocolate cake','They are playing in the park','Please bring the blue plate','Birds build nests in trees'] },
+  { name: 'Hard', sentences: ['The boy who loves music sings beautifully','After school we went to the bakery','She carefully placed the cookies on the tray','Because it rained, the match was cancelled','The talented baker decorated the cake with strawberries'] }
+];
+let currentLevel = 0, currentIdx = 0, score = 0, MAX_PER_LEVEL = 5;
+
+/* -------------------------
+   Elements
+   ------------------------- */
+const scrambled = document.getElementById('scrambled');
+const dropzone = document.getElementById('dropzone');
+const checkBtn = document.getElementById('checkBtn');
+const clearBtn = document.getElementById('clearBtn');
+const hintBtn = document.getElementById('hintBtn');
+const levelBtns = document.querySelectorAll('.level');
+const levelLabel = document.getElementById('levelLabel');
+const scoreEl = document.getElementById('score');
+const ingElems = {
+  flour: document.getElementById('ing_flour'),
+  sugar: document.getElementById('ing_sugar'),
+  eggs: document.getElementById('ing_eggs'),
+  milk: document.getElementById('ing_milk'),
+  icing: document.getElementById('ing_icing')
+};
+const ingredientButtons = document.querySelectorAll('.ing-btn[data-id]');
+const bowlGroup = document.getElementById('bowlGroup');
+const bowl = document.getElementById('bowl');
+const spoon = document.getElementById('spoon');
+const oven = document.getElementById('ovenGroup');
+const ovenDoor = document.getElementById('ovenDoor');
+const ovenGlow = document.getElementById('ovenGlow');
+const cakeGroup = document.getElementById('cakeGroup');
+const cakeLayers = [...document.querySelectorAll('.cake-layer')];
+const confettiCanvas = document.getElementById('confettiCanvas');
+const confettiCtx = confettiCanvas.getContext('2d');
+
+/* -------------------------
+   Audio (WebAudio)
+   ------------------------- */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTone(freq, dur=0.08, type='sine', vol=0.08){
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start();
+  o.stop(audioCtx.currentTime + dur);
+}
+function clickSound(){ playTone(880,0.06,'sine',0.06); }
+function successSound(){ playTone(1200,0.07,'sine',0.08); playTone(980,0.05,'sine',0.06); }
+function wrongSound(){ playTone(240,0.16,'sawtooth',0.08); }
+function hintSound(){ playTone(520,0.06,'triangle',0.06); }
+
+// mixing sound (short bubbling/mix)
+function playMixingSound(duration=700){
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(240, now);
+  osc.frequency.exponentialRampToValueAtTime(480, now + duration/1000);
+  gain.gain.setValueAtTime(0.08, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration/1000);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(now); osc.stop(now + duration/1000);
+}
+
+/* -------------------------
+   Confetti
+   ------------------------- */
+let confettiPieces = [];
+function resizeConfetti(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeConfetti); resizeConfetti();
+function spawnConfetti(){
+  confettiPieces = [];
+  const colors = ['#ff6b9a','#ffd166','#ffd1e0','#ffc3a0','#ffb3d9'];
+  for(let i=0;i<130;i++){
+    confettiPieces.push({
+      x: Math.random()*confettiCanvas.width,
+      y: -Math.random()*confettiCanvas.height,
+      r: 6 + Math.random()*8,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      tilt: Math.random()*10 - 10,
+      speed: 1 + Math.random()*3
+    });
+  }
+  animateConfetti();
+  setTimeout(()=> confettiPieces = [], 3200);
+}
+let confettiAnim;
+function animateConfetti(){
+  cancelAnimationFrame(confettiAnim);
+  const ctx = confettiCtx;
+  ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+  confettiPieces.forEach(p=>{
+    p.x += Math.sin(p.tilt) * 2;
+    p.y += p.speed;
+    p.tilt += 0.05;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, p.r, p.r*0.6);
+  });
+  confettiAnim = requestAnimationFrame(animateConfetti);
+}
+
+/* -------------------------
+   Utilities & UI
+   ------------------------- */
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
+function splitWords(sentence){ return sentence.match(/[\w']+|[.,!?;:\-]+/g) || []; }
+function normalize(s){ return s.replace(/\s+/g,' ').trim().toLowerCase().replace(/\s([.,!?;:])/g,'$1'); }
+function showToast(msg, t=1100){
+  const d = document.createElement('div'); d.textContent = msg;
+  Object.assign(d.style,{position:'fixed',left:'50%',transform:'translateX(-50%)',bottom:'28px',background:'rgba(0,0,0,0.76)',color:'#fff',padding:'10px 14px',borderRadius:'10px',zIndex:99999,fontWeight:700});
+  document.body.appendChild(d); setTimeout(()=> d.remove(), t);
+}
+
+/* -------------------------
+   Load sentence & chips
+   ------------------------- */
+function loadSentence(){
+  dropzone.innerHTML = '';
+  scrambled.innerHTML = '';
+  const sentence = LEVELS[currentLevel].sentences[currentIdx];
+  const words = splitWords(sentence);
+  const chips = shuffle([...words]);
+  chips.forEach(w=>{
+    const el = document.createElement('div'); el.className='word'; el.tabIndex=0; el.innerText = w;
+    el.addEventListener('click', ()=> placeWord(el));
+    scrambled.appendChild(el);
+  });
+  levelLabel.innerText = LEVELS[currentLevel].name;
+  updateUI();
+}
+
+/* -------------------------
+   Place / remove words
+   ------------------------- */
+function placeWord(el){
+  clickSound();
+  const clone = el.cloneNode(true);
+  clone.className = 'word';
+  clone.addEventListener('click', ()=> removeWord(clone));
+  dropzone.appendChild(clone);
+  el.style.opacity = 0.35; el.style.pointerEvents = 'none';
+}
+function removeWord(clone){
+  const text = clone.innerText;
+  clone.remove();
+  const chips = Array.from(scrambled.children);
+  for(const c of chips){ if(c.innerText === text && c.style.pointerEvents === 'none'){ c.style.opacity = 1; c.style.pointerEvents = ''; break; } }
+}
+function clearDrop(){ const clones = Array.from(dropzone.children); clones.forEach(c=>{ const txt = c.innerText; const chips = Array.from(scrambled.children); for(const ch of chips){ if(ch.innerText === txt && ch.style.pointerEvents === 'none'){ ch.style.opacity = 1; ch.style.pointerEvents = ''; break; } } c.remove(); }); }
+
+/* -------------------------
+   Animate ingredient flying into bowl
+   ------------------------- */
+function animateIngredientToBowl(ingId, onDone){
+  // create a temporary moving element positioned over SVG by using getBoundingClientRect
+  const ing = document.getElementById(ingId);
+  const ingRect = ing.getBoundingClientRect();
+  const svgRect = document.getElementById('bakerySVG').getBoundingClientRect();
+  // create absolute div to animate
+  const temp = document.createElement('div');
+  const title = (ing.dataset && ing.dataset.title) ? ing.dataset.title : (ing.textContent || 'ing');
+  temp.textContent = title;
+  Object.assign(temp.style,{
+    position:'fixed', left: (ingRect.left + ingRect.width/2) + 'px', top: (ingRect.top + ingRect.height/2) + 'px',
+    transform: 'translate(-50%,-50%)', background:'#fff', padding:'6px 10px', borderRadius:'8px', boxShadow:'0 10px 20px rgba(0,0,0,0.12)', fontWeight:'700', zIndex:9999
+  });
+  document.body.appendChild(temp);
+  // compute bowl center (global)
+  const bowlRect = bowl.getBoundingClientRect();
+  const destX = bowlRect.left + bowlRect.width/2;
+  const destY = bowlRect.top + bowlRect.height/3;
+  // animate using simple JS tween
+  const start = performance.now();
+  const dur = 700;
+  function step(now){
+    const t = Math.min(1, (now - start)/dur);
+    const ease = (--t)*t*t+1; // ease out cubic
+    const x = ingRect.left + ingRect.width/2 + (destX - (ingRect.left + ingRect.width/2)) * ease;
+    const y = ingRect.top + ingRect.height/2 + (destY - (ingRect.top + ingRect.height/2)) * ease - (50 * Math.sin(ease * Math.PI)); // arc
+    temp.style.left = x + 'px';
+    temp.style.top = y + 'px';
+    if(ease < 1) requestAnimationFrame(step);
+    else { setTimeout(()=> { temp.remove(); if(onDone) onDone(); }, 80); }
+  }
+  requestAnimationFrame(step);
+}
+
+/* -------------------------
+   Ingredient activation + bowl mixing logic
+   ------------------------- */
+const ING_ORDER = ['flour','sugar','eggs','milk','icing'];
+function activateIngredientByIndex(i){
+  const key = ING_ORDER[i];
+  const ingElem = ingElems[key];
+  if(!ingElem) return;
+  // animate fly from SVG ing to bowl
+  animateIngredientToBowl(ingElem.id, ()=>{
+    // mark SVG ingredient visually active
+    ingElem.setAttribute('transform', ingElem.getAttribute('transform') + ' scale(1.02)'); // minor effect
+    ingElem.style.opacity = 1;
+    ingElem.classList.add('active');
+    // bowl shake & mixing sound
+    bowl.classList.add('mix-shake');
+    playMixingSound(500);
+    setTimeout(()=> bowl.classList.remove('mix-shake'), 850);
+    // activate cake layer after mixing
+    setTimeout(()=> {
+      if(cakeLayers[i]) cakeLayers[i].classList.add('show');
+    }, 420);
+  });
+}
+
+/* -------------------------
+   Level completion sequence
+   ------------------------- */
+function finishLevelCelebration(){
+  // open oven (animate)
+  oven.classList.add('open'); // this toggles CSS transform for ovenDoor via stylesheet earlier
+  ovenGlow.setAttribute('fill','rgba(255,186,107,0.28)');
+  // bowl moves to oven
+  const bowlRect = bowl.getBoundingClientRect();
+  const ovenRect = oven.getBoundingClientRect();
+  const bowlClone = document.createElement('div');
+  bowlClone.textContent = 'Bowl';
+  Object.assign(bowlClone.style,{
+    position:'fixed', left: (bowlRect.left + bowlRect.width/2)+'px', top:(bowlRect.top + bowlRect.height/2)+'px',
+    transform:'translate(-50%,-50%)', background:'#fff', padding:'8px 12px', borderRadius:'12px', zIndex:9999, boxShadow:'0 20px 50px rgba(0,0,0,0.12)', fontWeight:'800'
+  });
+  document.body.appendChild(bowlClone);
+  // animate to oven center
+  const destX = ovenRect.left + ovenRect.width/2;
+  const destY = ovenRect.top + ovenRect.height/2 - 10;
+  const start = performance.now();
+  const dur = 900;
+  function step(now){
+    const t = Math.min(1, (now - start)/dur);
+    const ease = (--t)*t*t+1;
+    const x = bowlRect.left + bowlRect.width/2 + (destX - (bowlRect.left + bowlRect.width/2)) * ease;
+    const y = bowlRect.top + bowlRect.height/2 + (destY - (bowlRect.top + bowlRect.height/2)) * ease;
+    bowlClone.style.left = x + 'px'; bowlClone.style.top = y + 'px';
+    bowlClone.style.transform = `translate(-50%,-50%) rotate(${ease*8}deg) scale(${1 - 0.15*ease})`;
+    if(ease < 1) requestAnimationFrame(step);
+    else {
+      // simulate baking sound & then cake appears
+      playOvenBakingSequence(()=>{
+        bowlClone.remove();
+        // show cake emerging
+        cakeGroup.style.transition = 'opacity .6s ease'; cakeGroup.style.opacity = 1;
+        // show cake layers with slight delay
+        cakeLayers.forEach((cl, idx)=> setTimeout(()=> cl.classList.add('show'), idx*140));
+        spawnConfetti();
+        playVictoryMelody();
+        showToast('🎉 Cake is ready! Great job!', 2600);
+        setTimeout(()=> {
+          oven.classList.remove('open');
+          ovenGlow.setAttribute('fill','rgba(255,186,107,0.0)');
+        }, 2800);
+      });
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+/* Oven baking sound + callback when done */
+function playOvenBakingSequence(done){
+  // gentle whoosh -> short simmer -> done chime
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  // whoosh (noise-like via rapidly detuned oscillators)
+  const now = audioCtx.currentTime;
+  const o1 = audioCtx.createOscillator(), o2 = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o1.type='sine'; o2.type='sine';
+  o1.frequency.setValueAtTime(220, now);
+  o2.frequency.setValueAtTime(260, now);
+  g.gain.value = 0.02;
+  o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
+  o1.start(now); o2.start(now);
+  // simmer for 1.2s
+  setTimeout(()=> {
+    o1.frequency.linearRampToValueAtTime(330, audioCtx.currentTime + 0.6);
+    o2.frequency.linearRampToValueAtTime(360, audioCtx.currentTime + 0.6);
+  }, 120);
+  // stop after 1200ms
+  setTimeout(()=> { o1.stop(); o2.stop(); }, 1400);
+  // small chime at end
+  setTimeout(()=> {
+    playTone(880,0.08,'sine',0.09);
+    playTone(1047,0.08,'sine',0.08);
+    if(done) done();
+  }, 1500);
+}
+
+/* Short victory melody */
+function playVictoryMelody(){
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  const now = audioCtx.currentTime;
+  const notes = [880, 1047, 1319, 1760];
+  notes.forEach((n,i)=> {
+    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    o.type='sine'; o.frequency.value=n; g.gain.value=0.07 * Math.max(0.6, 1 - i*0.12);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(now + i*0.14); o.stop(now + i*0.14 + 0.12);
+  });
+}
+
+/* -------------------------
+   Answer checking
+   ------------------------- */
+function getAttempt(){ return Array.from(dropzone.children).map(n=>n.innerText).join(' '); }
+
+checkBtn.addEventListener('click', ()=>{
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  const attempt = getAttempt();
+  if(!attempt){ showToast('Please build a sentence first!'); return; }
+  const correct = LEVELS[currentLevel].sentences[currentIdx];
+  if(normalize(attempt) === normalize(correct)){
+    successSound();
+    showToast('Correct! Ingredient added', 900);
+    // activate ingredient ~ one per correct
+    activateIngredientByIndex(score);
+    score = Math.min(score + 1, MAX_PER_LEVEL);
+    updateUI();
+    currentIdx++;
+    if(currentIdx >= MAX_PER_LEVEL){
+      // all 5 answers done -> bake sequence
+      setTimeout(()=> finishLevelCelebration(), 700);
+    } else {
+      setTimeout(()=> loadSentence(), 700);
+    }
+  } else {
+    wrongSound();
+    showToast('Not quite — try again', 1100);
+  }
+});
+
+/* Hint & clear */
+clearBtn.addEventListener('click', ()=> { clearDrop(); clickSound(); });
+hintBtn.addEventListener('click', ()=>{
+  hintSound();
+  const words = splitWords(LEVELS[currentLevel].sentences[currentIdx]);
+  const placed = Array.from(dropzone.children).map(n=>n.innerText);
+  if(placed.length === 0){
+    const chip = Array.from(scrambled.children).find(c => c.innerText === words[0] && c.style.pointerEvents !== 'none');
+    if(chip) placeWord(chip);
+  } else {
+    const next = words[placed.length];
+    if(next){
+      const chip = Array.from(scrambled.children).find(c => c.innerText === next && c.style.pointerEvents !== 'none');
+      if(chip) placeWord(chip);
+    }
+  }
+  if(score > 0) score = Math.max(0, score - 1);
+  updateUI();
+});
+
+/* Level switch & restart */
+levelBtns.forEach(btn=> btn.addEventListener('click', ()=> {
+  const lvl = Number(btn.dataset.level);
+  setLevel(lvl);
+}));
+document.getElementById('restartBtn').addEventListener('click', ()=> {
+  currentIdx = 0; score = 0; updateUI(); loadSentence();
+  // reset visuals
+  cakeLayers.forEach(c=> c.classList.remove('show')); cakeGroup.style.opacity = 0;
+  for(const k of Object.keys(ingElems)) ingElems[k].classList.remove('active'); oven.classList.remove('open'); ovenGlow.setAttribute('fill','rgba(255,186,107,0.0)');
+  showToast('Level restarted',900);
+});
+document.getElementById('helpBtn').addEventListener('click', ()=> {
+  alert('How to play:\\n1) Tap words to move them into the box.\\n2) Arrange into a correct sentence and press Check.\\n3) Each correct sentence adds an ingredient to the bowl.\\n4) After 5 correct sentences the bowl goes to the oven and the cake appears!');
+});
+
+/* Ingredient row accessibility clicks (for testing) */
+ingredientButtons.forEach(btn => btn.addEventListener('click', ()=> {
+  const id = btn.dataset.id;
+  const el = document.getElementById(id);
+  if(el) { el.classList.add('active'); showToast(el.dataset.title + ' (manual)'); }
+}));
+
+/* UI update */
+function updateUI(){
+  scoreEl.innerText = score;
+  levelLabel.innerText = LEVELS[currentLevel].name;
+}
+
+/* init */
+function setLevel(n){
+  currentLevel = n; currentIdx = 0; score = 0;
+  document.querySelectorAll('.level').forEach(el=> el.classList.toggle('active', Number(el.dataset.level) === n));
+  cakeLayers.forEach(c=> c.classList.remove('show')); cakeGroup.style.opacity = 0;
+  for(const k of Object.keys(ingElems)) ingElems[k].classList.remove('active');
+  oven.classList.remove('open'); ovenGlow.setAttribute('fill','rgba(255,186,107,0.0)');
+  loadSentence(); updateUI();
+}
+setLevel(0);
+
+/* keyboard accessibility */
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Enter' && document.activeElement && document.activeElement.classList.contains('word')){
+    document.activeElement.click();
+  }
+});
+
+/* tapping in dropzone removes last */
+dropzone.addEventListener('click', (e)=> {
+  if(e.target === dropzone){
+    const last = dropzone.lastElementChild; if(last) removeWord(last);
+  }
+});
+
+/* utility: small toast on ingredient activation (SVG element visual) */
+for(const [i,k] of ING_ORDER.entries()){
+  const elem = ingElems[k];
+  if(elem){
+    elem.style.opacity = 0.9;
+  }
+}
+
+/* when page unload, stop any audio */
+window.addEventListener('beforeunload', ()=> {
+  try{ audioCtx.close(); }catch(e){}
+});
+
+/* ensure confetti canvas sized */
+resizeCanvas = ()=> { confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; };
+window.addEventListener('resize', resizeCanvas); resizeCanvas();
+</script>
+</body>
+</html>
