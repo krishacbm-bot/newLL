@@ -1,8 +1,2 @@
-Flask==3.1.2
-requests==2.32.3
-<<<<<<< HEAD
-gunicorn==21.2.0
-=======
-vosk==0.3.45
-gunicorn==21.2.0
->>>>>>> facc15b4fe923d6742dbd1ae93e5a69236849602
+flask==2.3.2
+requests==2.31.0
