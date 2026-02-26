@@ -119,7 +119,7 @@ html, body {
 
 <div class="hud">
   <div class="badge" id="levelBadge">Level: Easy</div>
-  <div class="badge" id="wordCount">Word: 1/5</div>
+  <div class="badge" id="wordCount">Word: 0/5</div>
 </div>
 <div id="score">Score: 0</div>
 
@@ -128,8 +128,8 @@ html, body {
     <svg width="300" height="450" viewBox="0 0 300 450" xmlns="http://www.w3.org/2000/svg">
       <g id="r_head"><rect x="90" y="0" width="120" height="100" rx="20" fill="#27b5ff" stroke="#222" stroke-width="3"/><circle cx="125" cy="45" r="18" fill="#d6faff" stroke="#222" stroke-width="3"/><circle cx="175" cy="45" r="18" fill="#d6faff" stroke="#222" stroke-width="3"/><path d="M125,75 Q150,90 175,75" stroke="#222" stroke-width="4" fill="none" stroke-linecap="round"/></g>
       <g id="r_body"><rect x="100" y="100" width="100" height="120" rx="20" fill="#27b5ff" stroke="#222" stroke-width="3"/></g>
-      <g id="r_arms"><rect x="65" y="115" width="25" height="90" rx="12" fill="#222"/><rect x="210" y="115" width="25" height="90" rx="12" fill="#222"/></g>
-      <g id="r_legs"><rect x="125" y="245" width="20" height="80" rx="10" fill="#222"/><rect x="155" y="245" width="20" height="80" rx="10" fill="#222"/></g>
+      <g id="r_arms"><rect x="65" y="115" width="25" height="90" rx="12" fill="#27b5ff"/><rect x="210" y="115" width="25" height="90" rx="12" fill="#27b5ff"/></g>
+      <g id="r_legs"><rect x="125" y="245" width="20" height="80" rx="10" fill="#27b5ff"/><rect x="155" y="245" width="20" height="80" rx="10" fill="#27b5ff"/></g>
       <g id="r_feet"><rect x="115" y="325" width="40" height="25" rx="10" fill="#27b5ff" stroke="#222" stroke-width="3"/><rect x="155" y="325" width="40" height="25" rx="10" fill="#27b5ff" stroke="#222" stroke-width="3"/></g>
     </svg>
   </div>
@@ -249,7 +249,7 @@ function playTTS(text) {
 }
 // --- HUD & Render ---
 function updateHUD() {
-  wordCount.textContent = `Word: ${wordIdx + 1}/${LEVELS[levelIdx].words.length}`;
+wordCount.textContent = `Word: ${wordIdx + 1}/${LEVELS[levelIdx].words.length}`;
   scoreBadge.textContent = `Score: ${score}`;
 }
 
@@ -411,6 +411,7 @@ function hardLevelAction(word) {
 let easyPartIdx = 0; // Tracks which part to assemble in Easy level
 
 function onCorrect() {
+  
   const currentWord = LEVELS[levelIdx].words[wordIdx];
   recordAttempt(currentWord, true);
   feedback.innerHTML = '<span style="color:#0ff;font-weight:800">Correct ✅</span>';
@@ -474,19 +475,19 @@ function onCorrect() {
 }
 
 // --- Incorrect answer ---
-function onIncorrect() {
-  recordAttempt(LEVELS[levelIdx].words[wordIdx], false);
-  feedback.innerHTML = '<span style="color:#f55">Try again!</span>';
-  triggerPortal(false);
-  setTimeout(() => { listenBtn.disabled = false; }, 300);
-}
+// function onIncorrect() {
+//   recordAttempt(LEVELS[levelIdx].words[wordIdx], false);
+//   feedback.innerHTML = '<span style="color:#f55">Try again!</span>';
+//   triggerPortal(false);
+//   setTimeout(() => { listenBtn.disabled = false; }, 300);
+// }
 
 // --- Speech recognition ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 let recognizer = null;
 if (SpeechRecognition) {
   recognizer = new SpeechRecognition();
-  recognizer.lang = 'en-US';
+  recognizer.lang = 'en-IN';
   recognizer.interimResults = false;
   recognizer.continuous = false;
   recognizer.maxAlternatives = 1;
@@ -494,23 +495,40 @@ if (SpeechRecognition) {
 
 // --- Button listeners ---
 playBtn.addEventListener('click', () => playTTS(LEVELS[levelIdx].words[wordIdx]));
-
 listenBtn.addEventListener('click', () => {
   if (!recognizer) {
     feedback.innerHTML = '<span style="color:#f55">Speech recognition not supported</span>';
     return;
   }
 
+  // ✅ STOP intro or any TTS immediately
+  speechSynthesis.cancel();
+
   listenBtn.disabled = true;
   feedback.innerHTML = '🎙️ Listening...';
 
   recognizer.onresult = function (ev) {
     const heard = ev.results[0][0].transcript.trim().toLowerCase();
-    if (similarity(heard, LEVELS[levelIdx].words[wordIdx])) onCorrect();
-    else onIncorrect();
+
+    if (similarity(heard, LEVELS[levelIdx].words[wordIdx])) {
+      onCorrect();
+    } else {
+      onIncorrect();
+    }
   };
 
-  recognizer.onend = function () { listenBtn.disabled = false; };
+  recognizer.onerror = function () {
+    feedback.innerHTML = '<span style="color:#f55">Mic error. Try again.</span>';
+    listenBtn.disabled = false;
+  };
+
+  recognizer.onend = function () {
+    if (feedback.innerHTML === '🎙️ Listening...') {
+      feedback.innerHTML = '<span style="color:#ff0">Mic stopped. Tap Speak again.</span>';
+    }
+    listenBtn.disabled = false;
+  };
+
   recognizer.start();
 });
 
